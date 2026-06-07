@@ -216,10 +216,10 @@ body {
 }
 
 /* ── PR / PHOTOS / PROFILE pages ── */
-.page-pr, .page-photos, .page-profile, .page-admin {
+.page-pr, .page-photos, .page-admin {
   display:none; flex:1; padding:1rem; padding-bottom:80px;
 }
-.page-pr.active, .page-photos.active, .page-profile.active, .page-admin.active { display:block; }
+.page-pr.active, .page-photos.active, .page-admin.active { display:block; }
 .page-section-title { font-size:1rem; font-weight:700; color:#1a1a2e; margin-bottom:1rem; padding-top:0.25rem; }
 .pr-card { background:#fff; border-radius:12px; padding:1rem; margin-bottom:0.75rem; box-shadow:0 1px 4px rgba(0,0,0,0.07); }
 .pr-date { font-size:0.72rem; color:#aaa; margin-bottom:0.25rem; }
@@ -243,6 +243,9 @@ body {
 .profile-rank { font-size:0.8rem; color:var(--theme); font-weight:600; margin:2px 0; }
 .profile-nick { font-size:0.85rem; color:#888; }
 .profile-section { background:#fff; border-radius:12px; padding:0.25rem 1rem; margin-bottom:0.75rem; box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+.profile-linked-header { display:flex; align-items:center; gap:0.5rem; padding:0.65rem 0 0.4rem; border-bottom:1px solid #f0f0f0; margin-bottom:0.1rem; }
+.profile-linked-badge { background:var(--theme); color:#fff; font-size:0.7rem; font-weight:700; border-radius:20px; padding:0.2rem 0.6rem; }
+.profile-linked-name { font-size:0.82rem; color:#555; }
 .profile-field { display:flex; align-items:center; padding:0.75rem 0; border-bottom:1px solid #f5f5f5; gap:0.75rem; cursor:pointer; }
 .profile-field.no-action { cursor:default; }
 .profile-field:last-child { border-bottom:none; }
@@ -360,6 +363,50 @@ body {
 .btn-link { margin-top:0.5rem; width:100%; background:#f0f4ff; color:#2a7efe; border:1.5px solid #c0d4ff; border-radius:8px; padding:0.4rem; font-family:var(--font); font-size:0.82rem; cursor:pointer; }
 .btn-link:hover { background:#ddeaff; }
 
+/* ── ACCOUNT MENU ── */
+.acct-btn { background:rgba(255,255,255,0.2); border:none; border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; flex-shrink:0; }
+.acct-menu { display:none; position:fixed; top:52px; right:8px; background:#fff; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.15); min-width:170px; z-index:300; overflow:hidden; }
+.acct-menu.open { display:block; }
+.acct-menu button { display:block; width:100%; padding:0.75rem 1rem; background:none; border:none; font-family:var(--font); font-size:0.88rem; text-align:left; cursor:pointer; color:#1a1a2e; border-bottom:1px solid #f0f0f0; }
+.acct-menu button:last-child { border-bottom:none; color:#d60000; }
+.acct-menu button:hover { background:#f5f7fa; }
+
+/* ── CHAT ── */
+.page-chat { display:none; flex-direction:column; height:calc(100vh - 120px); padding:0; padding-bottom:60px; }
+.page-chat.active { display:flex; }
+.chat-messages { flex:1; overflow-y:auto; padding:0.75rem; display:flex; flex-direction:column; gap:0.5rem; }
+.chat-msg { display:flex; gap:0.5rem; align-items:flex-end; max-width:85%; }
+.chat-msg.self { align-self:flex-end; flex-direction:row-reverse; }
+.chat-msg.other { align-self:flex-start; }
+.chat-avatar { width:30px; height:30px; border-radius:50%; background:var(--theme-light,#e8eef5); display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700; color:var(--theme,#1a3a5c); flex-shrink:0; overflow:hidden; }
+.chat-avatar img { width:100%; height:100%; object-fit:cover; }
+.chat-bubble-wrap { display:flex; flex-direction:column; gap:2px; }
+.chat-sender { font-size:0.68rem; color:#888; padding:0 4px; }
+.chat-msg.self .chat-sender { text-align:right; }
+.chat-bubble { padding:0.5rem 0.75rem; border-radius:16px; font-size:0.88rem; line-height:1.45; word-break:break-word; }
+.chat-msg.self  .chat-bubble { background:var(--theme,#1a3a5c); color:#fff; border-bottom-right-radius:4px; }
+.chat-msg.other .chat-bubble { background:#fff; color:#1a1a2e; border-bottom-left-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+.chat-bubble img { max-width:200px; max-height:200px; border-radius:8px; display:block; cursor:pointer; }
+.chat-bubble a.file-link { color:inherit; display:flex; align-items:center; gap:0.4rem; text-decoration:none; font-size:0.82rem; }
+.chat-time { font-size:0.62rem; color:#bbb; padding:0 4px; text-align:right; }
+.chat-msg.other .chat-time { text-align:left; }
+.chat-input-bar { position:fixed; bottom:60px; left:0; right:0; background:#fff; border-top:1px solid #eee; padding:0.5rem 0.75rem; display:flex; align-items:center; gap:0.5rem; z-index:90; max-width:480px; margin:0 auto; }
+.chat-input-bar input { flex:1; border:1.5px solid #ddd; border-radius:20px; padding:0.45rem 0.9rem; font-family:var(--font); font-size:0.88rem; outline:none; }
+.chat-input-bar input:focus { border-color:var(--theme,#1a3a5c); }
+.chat-attach-btn, .chat-send-btn { width:36px; height:36px; border-radius:50%; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
+.chat-attach-btn { background:#f0f0f0; color:#555; font-size:1.1rem; }
+.chat-send-btn { background:var(--theme,#1a3a5c); color:#fff; }
+.chat-send-btn svg { width:16px; height:16px; }
+.chat-attach-menu { position:fixed; bottom:110px; left:0.75rem; background:#fff; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:91; display:none; overflow:hidden; }
+.chat-attach-menu.open { display:block; }
+.chat-attach-menu button { display:block; width:100%; padding:0.65rem 1.2rem; background:none; border:none; font-family:var(--font); font-size:0.9rem; text-align:left; cursor:pointer; border-bottom:1px solid #f0f0f0; color:#1a1a2e; }
+.chat-attach-menu button:last-child { border-bottom:none; }
+.chat-attach-menu button:hover { background:#f5f7fa; }
+.chat-date-divider { text-align:center; font-size:0.7rem; color:#aaa; margin:0.5rem 0; }
+.chat-img-full { position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:600; display:none; align-items:center; justify-content:center; cursor:pointer; }
+.chat-img-full.open { display:flex; }
+.chat-img-full img { max-width:95vw; max-height:90vh; border-radius:8px; }
+
 /* ── LOADER ── */
 .loader-wrap { grid-column:1/-1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:3rem; gap:0.75rem; color:#aaa; font-size:0.85rem; }
 .spinner { width:32px; height:32px; border:3px solid #e0e0e0; border-top-color:var(--theme); border-radius:50%; animation:spin 0.8s linear infinite; }
@@ -420,6 +467,9 @@ body {
         <div class="header-sub" id="header-sub" style="display:none"></div>
       </div>
       <span class="header-count" id="header-count">0 คน</span>
+      <button class="acct-btn" onclick="toggleAccountMenu()" id="acct-btn-main" title="บัญชีผู้ใช้">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      </button>
     </div>
     <div class="search-box">
       <svg class="search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -435,7 +485,15 @@ body {
         <div class="header-title" id="simple-header-title">ประชาสัมพันธ์</div>
         <div class="header-sub">ทำเนียบรุ่น ตท.32</div>
       </div>
+      <button class="acct-btn" onclick="toggleAccountMenu()" id="acct-btn-simple" title="บัญชีผู้ใช้">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      </button>
     </div>
+  </div>
+  <!-- Account dropdown menu (fixed position, shared) -->
+  <div class="acct-menu" id="acct-menu">
+    <button onclick="switchTab('changepass'); closeAccountMenu()">🔒 เปลี่ยนรหัสผ่าน</button>
+    <button onclick="doLogout(); closeAccountMenu()">🚪 ออกจากระบบ</button>
   </div>
 
   <!-- Filter Chips -->
@@ -482,83 +540,26 @@ body {
     <p style="text-align:center;color:#aaa;font-size:0.8rem;margin-top:1rem;">อัลบั้มภาพจะแสดงที่นี่</p>
   </div>
 
-  <!-- Profile Page -->
-  <div class="page-profile" id="page-profile">
-    <div class="profile-hero">
-      <div class="profile-photo-wrap">
-        <div id="profile-photo-el" class="profile-photo-fb">👤</div>
-        <div class="photo-edit-btn" onclick="triggerPhotoUpload()">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
-        </div>
-      </div>
-      <div class="profile-name" id="profile-name-display">-</div>
-      <div class="profile-rank" id="profile-rank-display">-</div>
-      <div class="profile-nick" id="profile-nick-display">-</div>
-    </div>
-
-    <div class="profile-section">
-      <!-- ชื่อ-นามสกุล: แสดงอย่างเดียว ไม่แก้ไข -->
-      <div class="profile-field no-action">
-        <div class="pf-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-        <div class="pf-text">
-          <div class="pf-label">ชื่อ-นามสกุล</div>
-          <div class="pf-val" id="pf-name">-</div>
-        </div>
-      </div>
-      <!-- ชื่อเล่น: แสดงอย่างเดียว ไม่แก้ไข -->
-      <div class="profile-field no-action">
-        <div class="pf-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/></svg></div>
-        <div class="pf-text">
-          <div class="pf-label">ชื่อเล่น</div>
-          <div class="pf-val" id="pf-nick">-</div>
-        </div>
-      </div>
-      <div class="profile-field" onclick="editField('email','อีเมล์')">
-        <div class="pf-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
-        <div class="pf-text">
-          <div class="pf-label">อีเมล์</div>
-          <div class="pf-val" id="pf-email">-</div>
-        </div>
-        <svg class="pf-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-      </div>
-      <div class="profile-field" onclick="editField('phone1','มือถือ 1')">
-        <div class="pf-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg></div>
-        <div class="pf-text">
-          <div class="pf-label">มือถือ 1</div>
-          <div class="pf-val" id="pf-phone1">-</div>
-        </div>
-        <svg class="pf-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-      </div>
-      <div class="profile-field" onclick="editField('phone2','มือถือ 2')">
-        <div class="pf-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg></div>
-        <div class="pf-text">
-          <div class="pf-label">มือถือ 2</div>
-          <div class="pf-val" id="pf-phone2">-</div>
-        </div>
-        <svg class="pf-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-      </div>
-      <div class="profile-field" onclick="editField('shirtSize','ไซร์เสื้อ','select')">
-        <div class="pf-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
-        <div class="pf-text">
-          <div class="pf-label">ไซร์เสื้อ</div>
-          <div class="pf-val" id="pf-shirt">-</div>
-        </div>
-        <svg class="pf-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-      </div>
-    </div>
-
-    <div class="profile-section">
-      <div class="profile-field" onclick="goChangePassword()">
-        <div class="pf-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></div>
-        <div class="pf-text">
-          <div class="pf-label">ความปลอดภัย</div>
-          <div class="pf-val">เปลี่ยนรหัสผ่าน</div>
-        </div>
-        <svg class="pf-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-      </div>
-    </div>
-
-    <button class="btn-logout" onclick="doLogout()">ออกจากระบบ</button>
+  <!-- Chat Page -->
+  <div class="page-chat" id="page-chat">
+    <div class="chat-messages" id="chat-messages"></div>
+  </div>
+  <div class="chat-input-bar" id="chat-input-bar" style="display:none">
+    <button class="chat-attach-btn" onclick="toggleAttachMenu()" title="แนบไฟล์">📎</button>
+    <input type="text" id="chat-text-input" placeholder="พิมพ์ข้อความ..." onkeydown="handleChatKey(event)" autocomplete="off">
+    <button class="chat-send-btn" onclick="sendChatMessage()">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+    </button>
+    <input type="file" id="chat-image-input" accept="image/*" style="display:none" onchange="sendChatImage(event)">
+    <input type="file" id="chat-file-input" style="display:none" onchange="sendChatFile(event)">
+  </div>
+  <div class="chat-attach-menu" id="chat-attach-menu">
+    <button onclick="document.getElementById('chat-image-input').click(); closeAttachMenu()">📷 รูปภาพ</button>
+    <button onclick="document.getElementById('chat-file-input').click(); closeAttachMenu()">📄 ไฟล์เอกสาร</button>
+  </div>
+  <!-- Full image viewer -->
+  <div class="chat-img-full" id="chat-img-full" onclick="this.classList.remove('open')">
+    <img id="chat-img-full-el" src="" alt="">
   </div>
 
   <!-- Change Password Page -->
@@ -647,9 +648,9 @@ body {
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
       ภาพถ่าย
     </button>
-    <button class="nav-tab" id="tab-profile" onclick="switchTab('profile')">
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-      โปรไฟล์
+    <button class="nav-tab" id="tab-chat" onclick="switchTab('chat')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+      แชท
     </button>
     <!-- Admin tab: hidden by default, shown for admin only -->
     <button class="nav-tab" id="tab-admin" onclick="switchTab('admin')" style="display:none">
@@ -688,23 +689,6 @@ body {
   </div>
 </div>
 
-<!-- Profile Edit Field Modal -->
-<div class="edit-overlay" id="edit-overlay" onclick="closeEditIfOutside(event)">
-  <div class="edit-sheet" id="edit-sheet">
-    <h3 id="edit-title">แก้ไขข้อมูล</h3>
-    <input type="text" id="edit-input" style="display:none">
-    <select id="edit-select" style="display:none">
-      <option value="XS">XS</option><option value="S">S</option>
-      <option value="M">M</option><option value="L">L</option>
-      <option value="XL">XL</option><option value="2XL">2XL</option>
-      <option value="3XL">3XL</option>
-    </select>
-    <div class="edit-btns">
-      <button class="btn-cancel" onclick="closeEdit()">ยกเลิก</button>
-      <button class="btn-save" onclick="saveEdit()">บันทึก</button>
-    </div>
-  </div>
-</div>
 
 <!-- Member Data Edit Overlay -->
 <div class="edit-overlay" id="member-edit-overlay" onclick="closeMemberEditIfOutside(event)">
@@ -991,6 +975,7 @@ async function loadMembers() {
       });
 
     filterAndRender();
+    if (currentUserProfile) updateAccountBtn();
   } catch(e) {
     showEmptyState('ไม่สามารถโหลดข้อมูลได้ กรุณาตั้งค่า SHEETS_CSV_URL');
     console.error(e);
@@ -1191,15 +1176,18 @@ function switchTab(tab) {
   if (tab === 'admin' && !isAdmin()) { tab = 'directory'; }
 
   currentTab = tab;
-  document.querySelectorAll('.page-pr,.page-photos,.page-profile,.page-changepass,.page-admin,.grid-wrap')
+  document.querySelectorAll('.page-pr,.page-photos,.page-chat,.page-changepass,.page-admin,.grid-wrap')
     .forEach(el => { el.style.display='none'; el.classList.remove('active'); });
+  document.getElementById('chat-input-bar').style.display = 'none';
+  document.getElementById('chat-attach-menu').classList.remove('open');
+  if (chatUnsubscribe) { chatUnsubscribe(); chatUnsubscribe = null; }
   document.getElementById('filter-row').style.display    = 'none';
   document.getElementById('result-bar').style.display    = 'none';
   document.getElementById('main-header').style.display   = 'none';
   document.getElementById('simple-header').style.display = 'none';
 
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  const tabMap = { directory:'tab-directory', pr:'tab-pr', photos:'tab-photos', profile:'tab-profile', admin:'tab-admin' };
+  const tabMap = { directory:'tab-directory', pr:'tab-pr', photos:'tab-photos', chat:'tab-chat', admin:'tab-admin' };
   document.getElementById(tabMap[tab] || 'tab-directory')?.classList.add('active');
 
   if (tab === 'directory') {
@@ -1213,9 +1201,11 @@ function switchTab(tab) {
   } else if (tab === 'photos') {
     showSimpleHeader('ภาพถ่าย');
     show('page-photos');
-  } else if (tab === 'profile') {
-    showSimpleHeader('โปรไฟล์ของฉัน');
-    show('page-profile');
+  } else if (tab === 'chat') {
+    showSimpleHeader('แชทกลุ่ม ตท.32');
+    show('page-chat');
+    document.getElementById('chat-input-bar').style.display = 'flex';
+    loadChatPage();
   } else if (tab === 'changepass') {
     document.getElementById('page-changepass').style.display = 'block';
     document.getElementById('page-changepass').classList.add('active');
@@ -1268,87 +1258,15 @@ async function loadUserProfile() {
     };
     try { await db.collection('userProfiles').doc(currentUser.uid).set(currentUserProfile); } catch(_) {}
   }
-  renderProfile();
   const showAdminTab = isAdmin() || getUserRole().startsWith('editor_');
   document.getElementById('tab-admin').style.display = showAdminTab ? 'flex' : 'none';
+  updateAccountBtn();
 }
 
-function renderProfile() {
-  const p = currentUserProfile;
-  if (!p) return;
-  const name = p.displayName || currentUser.email;
-  document.getElementById('profile-name-display').textContent = name;
-  document.getElementById('profile-rank-display').textContent = p.rank || '';
-  document.getElementById('profile-nick-display').textContent = p.nickname ? `"${p.nickname}"` : '';
-  document.getElementById('pf-name').textContent   = p.displayName || '-';
-  document.getElementById('pf-nick').textContent   = p.nickname    || '-';
-  document.getElementById('pf-email').textContent  = p.email || currentUser.email || '-';
-  document.getElementById('pf-phone1').textContent = p.phone1   || '-';
-  document.getElementById('pf-phone2').textContent = p.phone2   || '-';
-  document.getElementById('pf-shirt').textContent  = p.shirtSize || '-';
-
-  const photoEl = document.getElementById('profile-photo-el');
-  if (p.photoURL) {
-    if (photoEl.tagName === 'IMG') { photoEl.src = p.photoURL; }
-    else { photoEl.outerHTML = `<img id="profile-photo-el" class="profile-photo" src="${p.photoURL}" alt="รูปโปรไฟล์">`; }
-  }
-}
-
-// ═══ PROFILE EDIT (email/phone/shirt only) ═══
-function editField(field, label, type='text') {
-  currentEditField = field;
-  currentEditType  = type;
-  document.getElementById('edit-title').textContent = `แก้ไข ${label}`;
-  const inp = document.getElementById('edit-input');
-  const sel = document.getElementById('edit-select');
-  if (type === 'select') {
-    inp.style.display = 'none'; sel.style.display = 'block';
-    sel.value = currentUserProfile?.[field] || '';
-  } else {
-    inp.style.display = 'block'; sel.style.display = 'none';
-    inp.type = field === 'email' ? 'email' : (field.includes('phone') ? 'tel' : 'text');
-    inp.value = currentUserProfile?.[field] || '';
-    setTimeout(() => inp.focus(), 300);
-  }
-  document.getElementById('edit-overlay').classList.add('open');
-}
-
-async function saveEdit() {
-  if (!currentEditField || !currentUser) return;
-  const val = currentEditType === 'select'
-    ? document.getElementById('edit-select').value
-    : document.getElementById('edit-input').value.trim();
-  await db.collection('userProfiles').doc(currentUser.uid).update({ [currentEditField]: val });
-  currentUserProfile[currentEditField] = val;
-  renderProfile();
-  closeEdit();
-  showToast('บันทึกแล้ว ✓');
-}
-
-function closeEdit() { document.getElementById('edit-overlay').classList.remove('open'); }
-function closeEditIfOutside(e) { if(e.target.id==='edit-overlay') closeEdit(); }
-
-// ═══ PHOTO UPLOAD ═══
-function triggerPhotoUpload() { document.getElementById('photo-file-input').click(); }
-async function handlePhotoUpload(e) {
-  const file = e.target.files[0];
-  if (!file || !currentUser) return;
-  const reader = new FileReader();
-  reader.onload = async ev => {
-    const dataUrl = ev.target.result;
-    await db.collection('userProfiles').doc(currentUser.uid).update({ photoURL: dataUrl });
-    currentUserProfile.photoURL = dataUrl;
-    const photoEl = document.getElementById('profile-photo-el');
-    if (photoEl.tagName === 'IMG') { photoEl.src = dataUrl; }
-    else { photoEl.outerHTML = `<img id="profile-photo-el" class="profile-photo" src="${dataUrl}" alt="รูปโปรไฟล์">`; }
-    showToast('อัปเดตรูปภาพแล้ว ✓');
-  };
-  reader.readAsDataURL(file);
-}
 
 // ═══ CHANGE PASSWORD ═══
 function goChangePassword() { switchTab('changepass'); }
-function backToProfile() { switchTab('profile'); }
+function backToProfile() { switchTab('directory'); }
 async function doChangePassword() {
   const curr = document.getElementById('cp-current').value;
   const newP = document.getElementById('cp-new').value;
@@ -1674,7 +1592,6 @@ async function confirmLinkMember(memberId) {
 
   try {
     await db.collection('userProfiles').doc(linkTargetUid).update({ memberId });
-    // ถ้าเป็น user ตัวเอง อัปเดต currentUserProfile ด้วย
     if (linkTargetUid === currentUser?.uid) {
       currentUserProfile.memberId = memberId;
     }
@@ -1693,6 +1610,209 @@ function closeLinkOverlay() {
 }
 function closeLinkOverlayIfOutside(e) {
   if (e.target.id === 'link-overlay') closeLinkOverlay();
+}
+
+// ═══ ACCOUNT MENU ═══
+function toggleAccountMenu() {
+  document.getElementById('acct-menu').classList.toggle('open');
+}
+function closeAccountMenu() {
+  document.getElementById('acct-menu').classList.remove('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.acct-btn') && !e.target.closest('#acct-menu')) closeAccountMenu();
+});
+
+function updateAccountBtn() {
+  const linked = currentUserProfile?.memberId ? allMembers.find(m => m.id === currentUserProfile.memberId) : null;
+  const photoSrc = linked?.photoUrl || currentUserProfile?.photoURL || '';
+  const bt = linked ? (BRANCH_THEME[linked.branch] || BRANCH_THEME['all']) : BRANCH_THEME['all'];
+  const name = linked?.nickname || linked?.fullname || currentUser?.email || '?';
+  const initial = (name.trim()[0] || '?').toUpperCase();
+
+  let inner;
+  if (photoSrc) {
+    inner = `<img src="${photoSrc}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`;
+  } else {
+    inner = `<span style="font-size:0.8rem;font-weight:700;color:#fff">${initial}</span>`;
+  }
+
+  ['acct-btn-main', 'acct-btn-simple'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.innerHTML = inner;
+    btn.style.background = photoSrc ? 'transparent' : bt.color;
+    btn.style.overflow = 'hidden';
+    btn.style.padding = photoSrc ? '0' : '';
+  });
+}
+
+// ═══ CHAT ═══
+let chatUnsubscribe = null;
+
+function loadChatPage() {
+  const msgsEl = document.getElementById('chat-messages');
+  msgsEl.innerHTML = '<div style="text-align:center;color:#aaa;padding:2rem;font-size:0.85rem">กำลังโหลด...</div>';
+
+  chatUnsubscribe = db.collection('messages')
+    .orderBy('createdAt', 'asc')
+    .limitToLast(100)
+    .onSnapshot(snap => {
+      renderChatMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, err => {
+      msgsEl.innerHTML = '<div style="text-align:center;color:#d60000;padding:2rem;font-size:0.85rem">ไม่สามารถโหลดแชทได้<br><small>ตรวจสอบ Firestore Rules</small></div>';
+      console.error(err);
+    });
+}
+
+function renderChatMessages(msgs) {
+  const msgsEl = document.getElementById('chat-messages');
+  if (!msgs.length) {
+    msgsEl.innerHTML = '<div style="text-align:center;color:#ccc;padding:3rem;font-size:0.85rem">ยังไม่มีข้อความ<br>เริ่มสนทนาได้เลย</div>';
+    return;
+  }
+
+  const linked = currentUserProfile?.memberId ? allMembers.find(m => m.id === currentUserProfile.memberId) : null;
+  const bt = linked ? (BRANCH_THEME[linked.branch] || BRANCH_THEME['all']) : BRANCH_THEME['all'];
+
+  let html = '';
+  let lastDate = '';
+  msgs.forEach(msg => {
+    const isSelf = msg.senderUid === currentUser?.uid;
+    const ts = msg.createdAt?.toDate ? msg.createdAt.toDate() : new Date();
+    const dateStr = ts.toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'numeric' });
+    const timeStr = ts.toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+
+    if (dateStr !== lastDate) {
+      html += `<div class="chat-date-divider">${dateStr}</div>`;
+      lastDate = dateStr;
+    }
+
+    const avatarBg  = isSelf ? bt.color : '#ddd';
+    const avatarTxt = isSelf ? (linked?.nickname || '?')[0] : (msg.senderName || '?')[0];
+    const avatarHtml = msg.senderPhoto
+      ? `<img src="${msg.senderPhoto}" alt="">`
+      : `<span style="background:${avatarBg};width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.75rem">${escHtml(avatarTxt)}</span>`;
+
+    let bubble = '';
+    if (msg.type === 'image') {
+      bubble = `<img src="${msg.mediaUrl}" alt="รูปภาพ" onclick="openFullImg('${msg.mediaUrl}')">`;
+    } else if (msg.type === 'file') {
+      bubble = `<a class="file-link" href="${msg.mediaUrl}" download="${escHtml(msg.fileName||'file')}">📄 ${escHtml(msg.fileName||'ไฟล์')}</a>`;
+    } else {
+      bubble = escHtml(msg.text || '').replace(/\n/g, '<br>');
+    }
+
+    html += `
+      <div class="chat-msg ${isSelf ? 'self' : 'other'}">
+        <div class="chat-avatar" style="background:${isSelf ? bt.color : '#eee'}">${avatarHtml}</div>
+        <div class="chat-bubble-wrap">
+          ${!isSelf ? `<div class="chat-sender">${escHtml(msg.senderName||'')}</div>` : ''}
+          <div class="chat-bubble">${bubble}</div>
+          <div class="chat-time">${timeStr}</div>
+        </div>
+      </div>`;
+  });
+
+  msgsEl.innerHTML = html;
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+function getSenderInfo() {
+  const linked = currentUserProfile?.memberId ? allMembers.find(m => m.id === currentUserProfile.memberId) : null;
+  return {
+    senderUid:   currentUser.uid,
+    senderName:  linked ? `${linked.rank} ${linked.fullname}` : (currentUser.email || ''),
+    senderPhoto: linked?.photoUrl || currentUserProfile?.photoURL || '',
+    senderBranch: linked?.branch || ''
+  };
+}
+
+async function sendChatMessage() {
+  const inp = document.getElementById('chat-text-input');
+  const text = inp.value.trim();
+  if (!text || !currentUser) return;
+  inp.value = '';
+  try {
+    await db.collection('messages').add({
+      ...getSenderInfo(),
+      type: 'text',
+      text,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch(e) { showToast('ส่งไม่ได้: ' + e.message); inp.value = text; }
+}
+
+function handleChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
+}
+
+function compressImage(file, maxPx, quality) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let { width: w, height: h } = img;
+      if (w > maxPx || h > maxPx) {
+        if (w > h) { h = Math.round(h * maxPx / w); w = maxPx; }
+        else       { w = Math.round(w * maxPx / h); h = maxPx; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = url;
+  });
+}
+
+async function sendChatImage(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file || !currentUser) return;
+  showToast('กำลังส่งรูปภาพ...');
+  try {
+    const dataUrl = await compressImage(file, 800, 0.75);
+    await db.collection('messages').add({
+      ...getSenderInfo(),
+      type: 'image',
+      mediaUrl: dataUrl,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch(err) { showToast('ส่งรูปไม่ได้: ' + err.message); }
+}
+
+async function sendChatFile(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file || !currentUser) return;
+  if (file.size > 400000) { showToast('ไฟล์ใหญ่เกิน 400KB'); return; }
+  showToast('กำลังส่งไฟล์...');
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      await db.collection('messages').add({
+        ...getSenderInfo(),
+        type: 'file',
+        mediaUrl: ev.target.result,
+        fileName: file.name,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch(err) { showToast('ส่งไฟล์ไม่ได้: ' + err.message); }
+  };
+  reader.readAsDataURL(file);
+}
+
+function toggleAttachMenu() {
+  document.getElementById('chat-attach-menu').classList.toggle('open');
+}
+function closeAttachMenu() {
+  document.getElementById('chat-attach-menu').classList.remove('open');
+}
+function openFullImg(src) {
+  document.getElementById('chat-img-full-el').src = src;
+  document.getElementById('chat-img-full').classList.add('open');
 }
 </script>
 </body>
