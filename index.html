@@ -975,7 +975,7 @@ async function loadMembers() {
       });
 
     filterAndRender();
-    if (currentUserProfile) updateAccountBtn();
+    await checkAutoLink();
   } catch(e) {
     showEmptyState('ไม่สามารถโหลดข้อมูลได้ กรุณาตั้งค่า SHEETS_CSV_URL');
     console.error(e);
@@ -1261,6 +1261,7 @@ async function loadUserProfile() {
   const showAdminTab = isAdmin() || getUserRole().startsWith('editor_');
   document.getElementById('tab-admin').style.display = showAdminTab ? 'flex' : 'none';
   updateAccountBtn();
+  await checkAutoLink();
 }
 
 
@@ -1610,6 +1611,44 @@ function closeLinkOverlay() {
 }
 function closeLinkOverlayIfOutside(e) {
   if (e.target.id === 'link-overlay') closeLinkOverlay();
+}
+
+// ═══ AUTO-LINK BY EMAIL ═══
+async function checkAutoLink() {
+  // ต้องมีทั้ง profile และ members พร้อมแล้ว
+  if (!currentUser || !currentUserProfile || !allMembers.length) return;
+  // ถ้ามี memberId แล้ว ไม่ต้องทำ
+  if (currentUserProfile.memberId) { updateAccountBtn(); return; }
+
+  const email = currentUser.email?.toLowerCase().trim();
+  if (!email) return;
+
+  // หาสมาชิกที่ email ตรงกัน
+  const match = allMembers.find(m => m.email && m.email.toLowerCase().trim() === email);
+  if (!match) return;
+
+  try {
+    // ผูกบัญชีอัตโนมัติ (เหมือน confirmLinkMember)
+    await db.collection('userProfiles').doc(currentUser.uid).update({ memberId: match.id });
+    currentUserProfile.memberId = match.id;
+
+    // ถ้ามี pendingRole สำหรับ email นี้ ให้ apply ด้วย
+    try {
+      const pr = await db.collection('pendingRoles').doc(email).get();
+      if (pr.exists && pr.data().role && currentUserProfile.role === 'member') {
+        await db.collection('userProfiles').doc(currentUser.uid).update({ role: pr.data().role });
+        currentUserProfile.role = pr.data().role;
+        const showAdminTab = isAdmin() || getUserRole().startsWith('editor_');
+        document.getElementById('tab-admin').style.display = showAdminTab ? 'flex' : 'none';
+      }
+    } catch(_) {}
+
+    updateAccountBtn();
+    showToast(`ผูกบัญชีกับ ${match.fullname} อัตโนมัติ ✓`);
+    console.log(`Auto-linked ${email} → ${match.fullname} (${match.id})`);
+  } catch(e) {
+    console.warn('Auto-link failed:', e.message);
+  }
 }
 
 // ═══ ACCOUNT MENU ═══
