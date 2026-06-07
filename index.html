@@ -975,9 +975,14 @@ const DEFAULT_PASSWORD = "tdt32@2567";
 
 // ═══════════════════════════════════════
 
-firebase.initializeApp(FIREBASE_CONFIG);
-const auth = firebase.auth();
-const db   = firebase.firestore();
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD8hKvQDEi9BrLwzEV9TryQPPlbiAtVjeQ",
+  authDomain: "afaps-32.firebaseapp.com",
+  projectId: "afaps-32",
+  storageBucket: "afaps-32.firebasestorage.app",
+  messagingSenderId: "782468740497",
+  appId: "1:782468740497:web:0d2023bc42711157c45630"
+};
 
 // ───── STATE ─────
 let allMembers   = [];
