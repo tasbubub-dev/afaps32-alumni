@@ -984,6 +984,10 @@ const FIREBASE_CONFIG = {
   appId: "1:782468740497:web:0d2023bc42711157c45630"
 };
 
+firebase.initializeApp(FIREBASE_CONFIG);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
 // ───── STATE ─────
 let allMembers   = [];
 let filteredMembers = [];
