@@ -1258,8 +1258,7 @@ async function loadUserProfile() {
     };
     try { await db.collection('userProfiles').doc(currentUser.uid).set(currentUserProfile); } catch(_) {}
   }
-  const showAdminTab = isAdmin() || getUserRole().startsWith('editor_');
-  document.getElementById('tab-admin').style.display = showAdminTab ? 'flex' : 'none';
+  document.getElementById('tab-admin').style.display = isAdmin() ? 'flex' : 'none';
   updateAccountBtn();
   await checkAutoLink();
 }
@@ -1638,8 +1637,7 @@ async function checkAutoLink() {
       if (pr.exists && pr.data().role && currentUserProfile.role === 'member') {
         await db.collection('userProfiles').doc(currentUser.uid).update({ role: pr.data().role });
         currentUserProfile.role = pr.data().role;
-        const showAdminTab = isAdmin() || getUserRole().startsWith('editor_');
-        document.getElementById('tab-admin').style.display = showAdminTab ? 'flex' : 'none';
+        document.getElementById('tab-admin').style.display = isAdmin() ? 'flex' : 'none';
       }
     } catch(_) {}
 
