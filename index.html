@@ -84,8 +84,23 @@ body {
   background:var(--theme); color:#fff;
   padding:0.6rem 1rem 0.7rem;
   transition:background var(--transition);
-  position:sticky; top:0; z-index:100;
 }
+#dir-sticky { position:sticky; top:0; z-index:100; }
+#simple-header { position:sticky; top:0; z-index:100; }
+.search-filter-sel {
+  background:rgba(255,255,255,0.15); border:none; outline:none;
+  color:#fff; font-family:var(--font); font-size:0.76rem;
+  border-radius:12px; padding:3px 6px; cursor:pointer; flex-shrink:0;
+  -webkit-appearance:none; appearance:none; text-align:center;
+}
+.search-filter-sel option { color:#1a1a2e; background:#fff; }
+.btn-import {
+  width:100%; padding:0.6rem; background:var(--theme,#1a3a5c); color:#fff;
+  border:none; border-radius:8px; font-family:var(--font); font-size:0.9rem;
+  cursor:pointer; margin-top:0.25rem; transition:opacity 0.2s;
+}
+.btn-import:hover { opacity:0.88; }
+.btn-import:disabled { opacity:0.5; cursor:default; }
 .header-top { display:flex; align-items:center; gap:0.6rem; margin-bottom:0.5rem; }
 .header-logo { width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.5); background:#fff; flex-shrink:0; }
 .header-text { flex:1; }
@@ -133,9 +148,10 @@ body {
 .member-photo-wrap { width:100%; aspect-ratio:1; overflow:hidden; background:#e8ecf2; position:relative; }
 .member-photo-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
 .member-photo-wrap .photo-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:var(--theme-light); font-size:2.5rem; color:var(--theme); }
-.branch-dot { position:absolute; bottom:5px; right:5px; width:18px; height:18px; border-radius:50%; background:var(--theme); border:2px solid #fff; }
 .member-info { padding:6px 7px 8px; }
-.rank-badge { display:inline-block; font-size:0.65rem; background:var(--theme); color:#fff; padding:1px 6px; border-radius:4px; margin-bottom:3px; font-weight:600; }
+.rank-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:3px; }
+.rank-badge { display:inline-block; font-size:0.65rem; background:var(--theme); color:#fff; padding:1px 6px; border-radius:4px; font-weight:600; }
+.branch-label { font-size:0.62rem; font-weight:700; opacity:0.85; }
 .m-name { font-size:0.8rem; font-weight:600; color:#1a1a2e; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .m-nick { font-size:0.75rem; color:#666; margin-top:1px; }
 .m-pos { font-size:0.7rem; color:#999; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -362,6 +378,9 @@ body {
 .user-role-linked-badge.none { color:#ccc; }
 .btn-link { margin-top:0.5rem; width:100%; background:#f0f4ff; color:#2a7efe; border:1.5px solid #c0d4ff; border-radius:8px; padding:0.4rem; font-family:var(--font); font-size:0.82rem; cursor:pointer; }
 .btn-link:hover { background:#ddeaff; }
+#admin-users-list { max-height:630px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#ddd transparent; padding-right:2px; }
+#admin-users-list::-webkit-scrollbar { width:4px; }
+#admin-users-list::-webkit-scrollbar-thumb { background:#ddd; border-radius:2px; }
 
 /* ── ACCOUNT MENU ── */
 .acct-btn { background:rgba(255,255,255,0.2); border:none; border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; flex-shrink:0; }
@@ -439,15 +458,15 @@ body {
 <div id="login-screen">
   <img class="login-logo" src="https://www.prachachat.net/wp-content/uploads/2022/01/633930.jpg" alt="โลโก้" onerror="this.style.display='none'">
   <h1 class="login-title">ทำเนียบรุ่น ตท.32</h1>
-  <p class="login-sub">เข้าสู่ระบบด้วยบัญชีที่ได้รับ</p>
+  <p class="login-sub">เข้าสู่ระบบด้วยเบอร์โทรศัพท์</p>
   <div class="login-card">
     <h2>เข้าสู่ระบบ</h2>
     <div class="form-group">
-      <label>อีเมล์</label>
-      <input type="email" id="login-email" placeholder="example@email.com" autocomplete="email">
+      <label>เบอร์โทรศัพท์ (10 หลัก)</label>
+      <input type="tel" id="login-phone" placeholder="0XXXXXXXXX" maxlength="10" pattern="[0-9]{10}" inputmode="numeric" autocomplete="tel">
     </div>
     <div class="form-group">
-      <label>รหัสผ่าน</label>
+      <label>รหัสผ่าน <small style="color:#aaa;font-weight:400">(เริ่มต้น 123456)</small></label>
       <input type="password" id="login-password" placeholder="รหัสผ่าน" autocomplete="current-password">
     </div>
     <button class="btn-login" id="btn-do-login">เข้าสู่ระบบ</button>
@@ -458,26 +477,39 @@ body {
 <!-- APP -->
 <div id="app">
 
-  <!-- Header directory -->
-  <div class="app-header" id="main-header">
-    <div class="header-top">
-      <img class="header-logo" src="https://www.prachachat.net/wp-content/uploads/2022/01/633930.jpg" alt="โลโก้" onerror="this.style.display='none'">
-      <div class="header-text">
-        <div class="header-title">ทำเนียบรุ่น ตท.32</div>
-        <div class="header-sub" id="header-sub" style="display:none"></div>
+  <!-- Sticky wrapper: directory header + filter chips -->
+  <div id="dir-sticky">
+    <div class="app-header" id="main-header">
+      <div class="header-top">
+        <img class="header-logo" src="https://www.prachachat.net/wp-content/uploads/2022/01/633930.jpg" alt="โลโก้" onerror="this.style.display='none'">
+        <div class="header-text">
+          <div class="header-title">ทำเนียบรุ่น ตท.32</div>
+          <div class="header-sub" id="header-sub" style="display:none"></div>
+        </div>
+        <span class="header-count" id="header-count">0 คน</span>
+        <button class="acct-btn" onclick="toggleAccountMenu()" id="acct-btn-main" title="บัญชีผู้ใช้">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        </button>
       </div>
-      <span class="header-count" id="header-count">0 คน</span>
-      <button class="acct-btn" onclick="toggleAccountMenu()" id="acct-btn-main" title="บัญชีผู้ใช้">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-      </button>
+      <div class="search-box">
+        <svg class="search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="search-input" placeholder="ค้นหา...">
+        <select id="unit-filter" class="search-filter-sel" title="กรองตามหน่วย">
+          <option value="all">ทุกหน่วย</option>
+        </select>
+      </div>
     </div>
-    <div class="search-box">
-      <svg class="search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input type="text" id="search-input" placeholder="ค้นหาชื่อ, ชื่อเล่น, ยศ, ตำแหน่ง...">
+    <!-- Filter Chips -->
+    <div class="filter-row" id="filter-row">
+      <button class="chip active" data-branch="all">ทั้งหมด</button>
+      <button class="chip" data-branch="ตร">ตร.</button>
+      <button class="chip" data-branch="ทบ">ทบ.</button>
+      <button class="chip" data-branch="ทอ">ทอ.</button>
+      <button class="chip" data-branch="ทร">ทร.</button>
     </div>
   </div>
 
-  <!-- Simple header other tabs -->
+  <!-- Simple header other tabs (sticky) -->
   <div class="app-header" id="simple-header" style="display:none;">
     <div class="header-top">
       <img class="header-logo" src="https://www.prachachat.net/wp-content/uploads/2022/01/633930.jpg" alt="โลโก้" onerror="this.style.display='none'">
@@ -496,14 +528,6 @@ body {
     <button onclick="doLogout(); closeAccountMenu()">🚪 ออกจากระบบ</button>
   </div>
 
-  <!-- Filter Chips -->
-  <div class="filter-row" id="filter-row">
-    <button class="chip active" data-branch="all">ทั้งหมด</button>
-    <button class="chip" data-branch="ตร">ตร.</button>
-    <button class="chip" data-branch="ทบ">ทบ.</button>
-    <button class="chip" data-branch="ทอ">ทอ.</button>
-    <button class="chip" data-branch="ทร">ทร.</button>
-  </div>
   <div class="result-bar" id="result-bar">กำลังโหลด...</div>
 
   <!-- Member Grid -->
@@ -632,6 +656,17 @@ body {
       • Editor ทร. — แก้ไขได้เฉพาะสมาชิก ทร.<br>
       • Member — แก้ไขได้เฉพาะข้อมูลตัวเอง (เบอร์/อีเมล/ไซร์เสื้อ/รูปภาพ)
     </div>
+
+    <div class="admin-section-label" style="margin-top:1.25rem">ซิงค์ข้อมูล Sheet → Firebase</div>
+    <div class="admin-tip-card" style="padding-bottom:0.75rem">
+      นำเข้าข้อมูลสมาชิกทั้งหมดจาก Google Sheet เข้า Firebase (collection: <code>members</code>)<br>
+      หลังจากนำเข้าแล้ว แอปจะอ่านข้อมูลจาก Firebase เป็นหลัก ไม่ต้องพึ่ง Sheet อีก<br>
+      <small style="color:#888">* รูปภาพเก็บ URL ไว้ใน Firebase (ไฟล์ภาพจริงยังอยู่ใน Google Drive)</small>
+    </div>
+    <button class="btn-import" id="btn-import" onclick="importMembersToFirebase()">
+      ☁️ นำเข้าข้อมูลจาก Sheet → Firebase
+    </button>
+    <div id="import-status" style="font-size:0.8rem;color:#666;margin-top:0.4rem;text-align:center"></div>
   </div>
 
   <!-- Bottom Nav -->
@@ -896,31 +931,70 @@ auth.onAuthStateChanged(user => {
     document.getElementById('app').style.display = 'none';
     currentUser = null;
     currentUserProfile = null;
+    const loginBtn = document.getElementById('btn-do-login');
+    if (loginBtn) { loginBtn.textContent = 'เข้าสู่ระบบ'; loginBtn.disabled = false; }
   }
 });
 
 document.getElementById('btn-do-login').addEventListener('click', doLogin);
+document.getElementById('login-phone').addEventListener('keypress', e => { if(e.key==='Enter') doLogin(); });
 document.getElementById('login-password').addEventListener('keypress', e => { if(e.key==='Enter') doLogin(); });
 
+function phoneToEmail(phone) { return phone + '@tat32.app'; }
+
+// Pre-load phone→email map from Sheet before auth (Sheet CSV is public)
+let phoneEmailMap = {};
+async function preloadPhoneEmailMap() {
+  try {
+    const res  = await fetch(SHEETS_CSV_URL);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if (rows.length < 2) return;
+    rows.slice(1).forEach(r => {
+      const email  = (r[COL.email] || '').trim().toLowerCase();
+      if (!email) return;
+      [r[COL.phone1], r[COL.phone2]].forEach(p => {
+        const ph = (p || '').replace(/[-\s]/g,'').trim();
+        if (/^\d{9,10}$/.test(ph)) phoneEmailMap[ph] = email;
+      });
+    });
+  } catch(e) { console.warn('phone-email preload:', e.message); }
+}
+preloadPhoneEmailMap();
+
 async function doLogin() {
-  const email = document.getElementById('login-email').value.trim();
+  const phone = (document.getElementById('login-phone').value || '').trim().replace(/[-\s]/g,'');
   const pass  = document.getElementById('login-password').value;
   const errEl = document.getElementById('login-err');
+  const btn   = document.getElementById('btn-do-login');
   errEl.textContent = '';
-  if (!email || !pass) { errEl.textContent = 'กรุณากรอกอีเมล์และรหัสผ่าน'; return; }
+  if (!phone) { errEl.textContent = 'กรุณากรอกเบอร์โทรศัพท์'; return; }
+  if (!/^\d{10}$/.test(phone)) { errEl.textContent = 'เบอร์โทรต้องเป็นตัวเลข 10 หลัก'; return; }
+  if (!pass)  { errEl.textContent = 'กรุณากรอกรหัสผ่าน'; return; }
+
+  btn.textContent = 'กำลังเข้าสู่ระบบ...';
+  btn.disabled = true;
+  // ใช้ email จริงจาก Sheet ถ้ามี ไม่งั้นใช้ virtual email
+  const vEmail = phoneEmailMap[phone] || phoneToEmail(phone);
+
   try {
-    document.getElementById('btn-do-login').textContent = 'กำลังเข้าสู่ระบบ...';
-    await auth.signInWithEmailAndPassword(email, pass);
-  } catch(e) {
-    document.getElementById('btn-do-login').textContent = 'เข้าสู่ระบบ';
-    const msgs = {
-      'auth/user-not-found':'ไม่พบบัญชีนี้ในระบบ',
-      'auth/wrong-password':'รหัสผ่านไม่ถูกต้อง',
-      'auth/invalid-email':'รูปแบบอีเมล์ไม่ถูกต้อง',
-      'auth/too-many-requests':'ลองใหม่อีกครั้งในภายหลัง',
-      'auth/invalid-credential':'อีเมล์หรือรหัสผ่านไม่ถูกต้อง'
-    };
-    errEl.textContent = msgs[e.code] || 'เกิดข้อผิดพลาด: ' + e.message;
+    await auth.signInWithEmailAndPassword(vEmail, pass);
+  } catch(signInErr) {
+    // ถ้าไม่มีบัญชี → สร้างใหม่อัตโนมัติด้วยรหัสผ่าน 123456
+    try {
+      await auth.createUserWithEmailAndPassword(vEmail, '123456');
+      // createUserWithEmailAndPassword auto-signs in — onAuthStateChanged จะจัดการต่อ
+    } catch(createErr) {
+      btn.textContent = 'เข้าสู่ระบบ';
+      btn.disabled = false;
+      if (createErr.code === 'auth/email-already-in-use') {
+        errEl.textContent = 'รหัสผ่านไม่ถูกต้อง';
+      } else if (createErr.code === 'auth/too-many-requests') {
+        errEl.textContent = 'ลองใหม่อีกครั้งในภายหลัง';
+      } else {
+        errEl.textContent = 'เกิดข้อผิดพลาด: ' + (createErr.message || signInErr.message);
+      }
+    }
   }
 }
 
@@ -931,49 +1005,69 @@ async function doLogout() {
 // ═══ LOAD MEMBERS + OVERRIDES ═══
 async function loadMembers() {
   try {
-    // โหลด Google Sheets (required)
-    const res  = await fetch(SHEETS_CSV_URL);
-    const text = await res.text();
-    const rows = parseCSV(text);
-    if (rows.length < 2) { showEmptyState('ไม่พบข้อมูลใน Sheet'); return; }
-
-    // ตรวจหา birthday column จาก header row
-    const header = rows[0].map(h => (h||'').trim().toLowerCase());
-    birthdayColIdx = header.findIndex(h => h.includes('เกิด') || h.includes('birthday') || h.includes('birth'));
-
-    // โหลด Firestore overrides (optional — ไม่พังถ้า rules ยังไม่ตั้ง)
+    // โหลด Firestore overrides (merged ทั้งสองแหล่ง)
     let overrides = {};
     try {
       const snap = await db.collection('memberOverrides').get();
       snap.forEach(doc => { overrides[doc.id] = doc.data(); });
-    } catch(fe) {
-      console.warn('memberOverrides ไม่พร้อม:', fe.message);
+    } catch(fe) { console.warn('memberOverrides ไม่พร้อม:', fe.message); }
+
+    // ลองโหลดจาก Firebase members collection ก่อน
+    let firebaseMembers = null;
+    try {
+      const testSnap = await db.collection('members').limit(1).get();
+      if (!testSnap.empty) {
+        const allSnap = await db.collection('members').get();
+        firebaseMembers = [];
+        allSnap.forEach(doc => firebaseMembers.push(doc.data()));
+      }
+    } catch(fe) { console.warn('Firebase members ไม่พร้อม:', fe.message); }
+
+    if (firebaseMembers && firebaseMembers.length > 0) {
+      // ใช้ Firebase เป็นแหล่งหลัก
+      allMembers = firebaseMembers
+        .filter(m => m.fullname)
+        .map(m => {
+          const ov = overrides[m.id];
+          return ov ? { ...m, ...ov } : m;
+        })
+        .sort((a, b) => (Number(a.id)||0) - (Number(b.id)||0));
+    } else {
+      // Fall back: โหลดจาก Google Sheets
+      const res  = await fetch(SHEETS_CSV_URL);
+      const text = await res.text();
+      const rows = parseCSV(text);
+      if (rows.length < 2) { showEmptyState('ไม่พบข้อมูลใน Sheet'); return; }
+
+      const header = rows[0].map(h => (h||'').trim().toLowerCase());
+      birthdayColIdx = header.findIndex(h => h.includes('เกิด') || h.includes('birthday') || h.includes('birth'));
+
+      allMembers = rows.slice(1)
+        .filter(r => r[COL.fullname] && r[COL.fullname].trim())
+        .map((r, i) => {
+          const seq = r[COL.seq] || String(i+1);
+          const base = {
+            id:       seq,
+            photoUrl: driveToImg(r[COL.photo]),
+            rank:     r[COL.rank]     || '',
+            fullname: r[COL.fullname] || '',
+            nickname: r[COL.nickname] || '',
+            position: r[COL.position] || '',
+            unit:     r[COL.unit]     || '',
+            phone1:   r[COL.phone1]   || '',
+            phone2:   r[COL.phone2]   || '',
+            level:    r[COL.level]    || '',
+            shirt:    r[COL.shirt]    || '',
+            email:    r[COL.email]    || '',
+            birthday: (birthdayColIdx >= 0 ? r[birthdayColIdx] : '') || ''
+          };
+          base.branch = detectBranch(base.rank);
+          const ov = overrides[seq];
+          return ov ? { ...base, ...ov } : base;
+        });
     }
 
-    allMembers = rows.slice(1)
-      .filter(r => r[COL.fullname] && r[COL.fullname].trim())
-      .map((r, i) => {
-        const seq = r[COL.seq] || String(i+1);
-        const base = {
-          id:       seq,
-          photoUrl: driveToImg(r[COL.photo]),
-          rank:     r[COL.rank]     || '',
-          fullname: r[COL.fullname] || '',
-          nickname: r[COL.nickname] || '',
-          position: r[COL.position] || '',
-          unit:     r[COL.unit]     || '',
-          phone1:   r[COL.phone1]   || '',
-          phone2:   r[COL.phone2]   || '',
-          level:    r[COL.level]    || '',
-          shirt:    r[COL.shirt]    || '',
-          email:    r[COL.email]    || '',
-          birthday: (birthdayColIdx >= 0 ? r[birthdayColIdx] : '') || ''
-        };
-        base.branch = detectBranch(base.rank);
-        const ov = overrides[seq];
-        return ov ? { ...base, ...ov } : base;
-      });
-
+    populateUnitFilter();
     filterAndRender();
     await checkAutoLink();
   } catch(e) {
@@ -998,6 +1092,7 @@ function parseCSV(text) {
 
 // ═══ FILTER & RENDER ═══
 document.getElementById('search-input').addEventListener('input', filterAndRender);
+document.getElementById('unit-filter').addEventListener('change', filterAndRender);
 const BRANCH_SCHOOL = {
   all: '',
   ตร: 'โรงเรียนนายร้อยตำรวจ',
@@ -1025,13 +1120,24 @@ document.querySelectorAll('.chip').forEach(btn => {
   });
 });
 
+function populateUnitFilter() {
+  const sel = document.getElementById('unit-filter');
+  if (!sel) return;
+  const prev = sel.value;
+  const units = [...new Set(allMembers.map(m => m.unit).filter(Boolean))].sort((a,b) => a.localeCompare(b,'th'));
+  sel.innerHTML = '<option value="all">ทุกหน่วย</option>' +
+    units.map(u => `<option value="${escHtml(u)}"${u===prev?' selected':''}>${escHtml(u)}</option>`).join('');
+}
+
 function filterAndRender() {
-  const q = (document.getElementById('search-input').value || '').trim().toLowerCase();
+  const q    = (document.getElementById('search-input').value || '').trim().toLowerCase();
+  const unit = document.getElementById('unit-filter')?.value || 'all';
   filteredMembers = allMembers.filter(m => {
     const branchOk = currentBranch === 'all' || m.branch === currentBranch;
+    const unitOk   = unit === 'all' || m.unit === unit;
     const searchOk = !q || [m.rank, m.fullname, m.nickname, m.position, m.unit]
       .some(s => (s||'').toLowerCase().includes(q));
-    return branchOk && searchOk;
+    return branchOk && unitOk && searchOk;
   });
   renderGrid();
   document.getElementById('header-count').textContent = `${filteredMembers.length} คน`;
@@ -1046,22 +1152,27 @@ function renderGrid() {
     grid.innerHTML = `<div class="empty-state">ไม่พบข้อมูลที่ค้นหา</div>`;
     return;
   }
-  grid.innerHTML = filteredMembers.map(m => `
+  grid.innerHTML = filteredMembers.map(m => {
+    const bc = BRANCH_THEME[m.branch]?.color || '#1a3a5c';
+    const branchText = m.branch && m.branch !== 'all' ? `(${m.branch}.)` : '';
+    return `
     <div class="member-card" onclick="openDetail('${escHtml(m.id)}')">
       <div class="member-photo-wrap">
         ${m.photoUrl
           ? `<img src="${m.photoUrl}" alt="${escHtml(m.fullname)}" onerror="this.parentElement.innerHTML='<div class=\\'photo-fallback\\'>👤</div>'">`
           : `<div class="photo-fallback">👤</div>`}
-        <div class="branch-dot" style="background:${BRANCH_THEME[m.branch]?.color||'#1a3a5c'}"></div>
       </div>
       <div class="member-info">
-        <div class="rank-badge" style="background:${BRANCH_THEME[m.branch]?.color||'#1a3a5c'}">${escHtml(m.rank)}</div>
+        <div class="rank-row">
+          <div class="rank-badge" style="background:${bc}">${escHtml(m.rank)}</div>
+          <span class="branch-label" style="color:${bc}">${branchText}</span>
+        </div>
         <div class="m-name">${escHtml(m.fullname)}</div>
         <div class="m-nick">${m.nickname ? '"'+escHtml(m.nickname)+'"' : ''}</div>
         <div class="m-pos">${escHtml(m.position)}</div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function showEmptyState(msg) {
@@ -1181,9 +1292,8 @@ function switchTab(tab) {
   document.getElementById('chat-input-bar').style.display = 'none';
   document.getElementById('chat-attach-menu').classList.remove('open');
   if (chatUnsubscribe) { chatUnsubscribe(); chatUnsubscribe = null; }
-  document.getElementById('filter-row').style.display    = 'none';
+  document.getElementById('dir-sticky').style.display    = 'none';
   document.getElementById('result-bar').style.display    = 'none';
-  document.getElementById('main-header').style.display   = 'none';
   document.getElementById('simple-header').style.display = 'none';
 
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -1191,10 +1301,9 @@ function switchTab(tab) {
   document.getElementById(tabMap[tab] || 'tab-directory')?.classList.add('active');
 
   if (tab === 'directory') {
-    document.getElementById('main-header').style.display  = 'block';
-    document.getElementById('filter-row').style.display   = 'flex';
-    document.getElementById('result-bar').style.display   = 'block';
-    document.getElementById('member-grid').style.display  = 'grid';
+    document.getElementById('dir-sticky').style.display  = 'block';
+    document.getElementById('result-bar').style.display  = 'block';
+    document.getElementById('member-grid').style.display = 'grid';
   } else if (tab === 'pr') {
     showSimpleHeader('ประชาสัมพันธ์');
     show('page-pr');
@@ -1385,6 +1494,13 @@ async function saveMemberEdit() {
 
   try {
     await db.collection('memberOverrides').doc(currentEditMemberId).set(data, { merge: true });
+    // อัพเดท members collection ด้วย (ถ้านำเข้าแล้ว)
+    try {
+      const mDoc = await db.collection('members').doc(currentEditMemberId).get();
+      if (mDoc.exists) {
+        await db.collection('members').doc(currentEditMemberId).set(data, { merge: true });
+      }
+    } catch(fe) { /* members collection ยังไม่มี — ข้ามได้ */ }
     const idx = allMembers.findIndex(m => m.id === currentEditMemberId);
     if (idx !== -1) { allMembers[idx] = { ...allMembers[idx], ...data }; }
     closeMemberEdit();
@@ -1403,6 +1519,55 @@ function closeMemberEdit() {
   pendingPhotoDataUrl = null;
 }
 function closeMemberEditIfOutside(e) { if(e.target.id==='member-edit-overlay') closeMemberEdit(); }
+
+// ═══ IMPORT SHEET → FIREBASE ═══
+async function importMembersToFirebase() {
+  if (!allMembers.length) { showToast('ยังไม่มีข้อมูลจาก Sheet'); return; }
+  const btn = document.getElementById('btn-import');
+  const status = document.getElementById('import-status');
+  if (!confirm(`นำเข้าข้อมูล ${allMembers.length} คน เข้า Firebase?\nหลังจากนี้แอปจะอ่านข้อมูลจาก Firebase เป็นหลัก`)) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังนำเข้า...';
+  status.textContent = '';
+  const BATCH_SIZE = 499;
+  let imported = 0;
+  try {
+    for (let i = 0; i < allMembers.length; i += BATCH_SIZE) {
+      const batch = db.batch();
+      allMembers.slice(i, i + BATCH_SIZE).forEach(m => {
+        batch.set(db.collection('members').doc(m.id), {
+          id:       m.id,
+          photoUrl: m.photoUrl  || '',
+          rank:     m.rank      || '',
+          fullname: m.fullname  || '',
+          nickname: m.nickname  || '',
+          position: m.position  || '',
+          unit:     m.unit      || '',
+          phone1:   m.phone1    || '',
+          phone2:   m.phone2    || '',
+          level:    m.level     || '',
+          shirt:    m.shirt     || '',
+          email:    m.email     || '',
+          birthday: m.birthday  || '',
+          branch:   m.branch    || '',
+          importedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+      imported += Math.min(BATCH_SIZE, allMembers.length - i);
+      status.textContent = `นำเข้าแล้ว ${imported}/${allMembers.length} คน...`;
+    }
+    status.textContent = `✓ นำเข้าครบ ${allMembers.length} คน — แอปจะโหลดจาก Firebase ครั้งต่อไป`;
+    btn.textContent = '✓ นำเข้าแล้ว';
+    showToast(`นำเข้า ${allMembers.length} คน เข้า Firebase แล้ว ✓`);
+  } catch(e) {
+    status.textContent = 'เกิดข้อผิดพลาด: ' + e.message;
+    btn.disabled = false;
+    btn.textContent = '☁️ นำเข้าข้อมูลจาก Sheet → Firebase';
+    showToast('เกิดข้อผิดพลาด: ' + e.message);
+    console.error(e);
+  }
+}
 
 // ═══ ADMIN MEMBER SEARCH ═══
 let adminSelectedMember = null;
@@ -1612,38 +1777,45 @@ function closeLinkOverlayIfOutside(e) {
   if (e.target.id === 'link-overlay') closeLinkOverlay();
 }
 
-// ═══ AUTO-LINK BY EMAIL ═══
+// ═══ AUTO-LINK BY EMAIL / PHONE ═══
 async function checkAutoLink() {
-  // ต้องมีทั้ง profile และ members พร้อมแล้ว
   if (!currentUser || !currentUserProfile || !allMembers.length) return;
-  // ถ้ามี memberId แล้ว ไม่ต้องทำ
   if (currentUserProfile.memberId) { updateAccountBtn(); return; }
 
-  const email = currentUser.email?.toLowerCase().trim();
-  if (!email) return;
+  const authEmail = currentUser.email?.toLowerCase().trim() || '';
+  if (!authEmail) return;
 
-  // หาสมาชิกที่ email ตรงกัน
-  const match = allMembers.find(m => m.email && m.email.toLowerCase().trim() === email);
+  // ลองจับคู่: 1) อีเมล์จริง 2) เบอร์โทรศัพท์ (phone@tat32.app)
+  let match = allMembers.find(m => m.email && m.email.toLowerCase().trim() === authEmail);
+  if (!match && authEmail.endsWith('@tat32.app')) {
+    const phone = authEmail.split('@')[0];
+    match = allMembers.find(m =>
+      (m.phone1 && m.phone1.replace(/[-\s]/g,'') === phone) ||
+      (m.phone2 && m.phone2.replace(/[-\s]/g,'') === phone)
+    );
+  }
   if (!match) return;
 
   try {
-    // ผูกบัญชีอัตโนมัติ (เหมือน confirmLinkMember)
     await db.collection('userProfiles').doc(currentUser.uid).update({ memberId: match.id });
     currentUserProfile.memberId = match.id;
 
-    // ถ้ามี pendingRole สำหรับ email นี้ ให้ apply ด้วย
-    try {
-      const pr = await db.collection('pendingRoles').doc(email).get();
-      if (pr.exists && pr.data().role && currentUserProfile.role === 'member') {
-        await db.collection('userProfiles').doc(currentUser.uid).update({ role: pr.data().role });
-        currentUserProfile.role = pr.data().role;
-        document.getElementById('tab-admin').style.display = isAdmin() ? 'flex' : 'none';
-      }
-    } catch(_) {}
+    // ตรวจ pendingRole จากทั้ง authEmail และ email จริงของสมาชิก
+    const memberEmail = match.email?.toLowerCase().trim() || '';
+    for (const key of [...new Set([authEmail, memberEmail])].filter(Boolean)) {
+      try {
+        const pr = await db.collection('pendingRoles').doc(key).get();
+        if (pr.exists && pr.data().role && currentUserProfile.role === 'member') {
+          await db.collection('userProfiles').doc(currentUser.uid).update({ role: pr.data().role });
+          currentUserProfile.role = pr.data().role;
+          document.getElementById('tab-admin').style.display = isAdmin() ? 'flex' : 'none';
+          break;
+        }
+      } catch(_) {}
+    }
 
     updateAccountBtn();
     showToast(`ผูกบัญชีกับ ${match.fullname} อัตโนมัติ ✓`);
-    console.log(`Auto-linked ${email} → ${match.fullname} (${match.id})`);
   } catch(e) {
     console.warn('Auto-link failed:', e.message);
   }
