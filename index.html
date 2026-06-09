@@ -709,42 +709,62 @@ body {
     </div>
     <input id="apps-script-url" type="url" placeholder="https://script.google.com/macros/s/..."
       style="width:100%;box-sizing:border-box;padding:0.5rem 0.7rem;border:1.5px solid #ddd;border-radius:8px;font-family:var(--font);font-size:0.82rem;margin-top:0.25rem;outline:none">
-    <button onclick="saveAppsScriptUrl()" style="margin-top:0.4rem;width:100%;background:var(--theme,#1a3a5c);color:#fff;border:none;border-radius:8px;padding:0.45rem;font-family:var(--font);font-size:0.85rem;cursor:pointer">💾 บันทึก URL</button>
+    <div style="display:flex;gap:0.4rem;margin-top:0.4rem">
+      <button onclick="saveAppsScriptUrl()" style="flex:1;background:var(--theme,#1a3a5c);color:#fff;border:none;border-radius:8px;padding:0.45rem;font-family:var(--font);font-size:0.85rem;cursor:pointer">💾 บันทึก URL</button>
+      <button onclick="testAppsScriptUrl()" style="flex:0 0 auto;background:#4caf50;color:#fff;border:none;border-radius:8px;padding:0.45rem 0.8rem;font-family:var(--font);font-size:0.85rem;cursor:pointer">🔗 ทดสอบ</button>
+    </div>
     <div id="apps-script-status" style="font-size:0.75rem;color:#666;margin-top:0.3rem;text-align:center"></div>
 
     <!-- Apps Script help -->
     <div id="apps-script-help" style="display:none;margin-top:0.75rem">
       <div class="admin-tip-card" style="font-size:0.75rem;background:#f0f4ff;border:1px solid #c0d4ff">
-        <strong>วิธีติดตั้ง:</strong><br>
+        <strong>วิธีติดตั้ง / อัพเดท:</strong><br>
         1. เปิด Google Sheet → Extensions → Apps Script<br>
-        2. วางโค้ดนี้ใน Code.gs แล้วกด Deploy → Web App<br>
-        3. ตั้งค่า "Who has access" = Anyone<br>
-        4. คัดลอก URL มาวางในช่องด้านบน<br><br>
+        2. <strong style="color:#c00">ลบโค้ดเดิมทั้งหมด</strong> แล้ววางโค้ดด้านล่างแทน<br>
+        3. กด Deploy → <strong>New deployment</strong> (หรือ Manage → Edit → New version)<br>
+        4. Execute as: <strong>Me</strong> / Who has access: <strong>Anyone</strong><br>
+        5. คัดลอก URL ใหม่ที่ได้มาวางในช่องด้านบน แล้วกด 💾 บันทึก<br>
+        6. กด 🔗 ทดสอบ — ถ้าเห็น {"ok":true} แสดงว่าพร้อมใช้งาน<br><br>
         <strong>โค้ด Apps Script:</strong>
-        <textarea readonly style="width:100%;box-sizing:border-box;margin-top:0.4rem;font-size:0.7rem;font-family:monospace;height:160px;border:1px solid #ddd;border-radius:6px;padding:6px;resize:none;background:#fff">// ใช้ doGet เพราะ 302 redirect ของ Apps Script จะทำให้ POST body หายไป
-function doGet(e){
-  try{
-    var p=e.parameter;
-    var sh=SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-    var v=sh.getDataRange().getValues();
-    for(var i=1;i<v.length;i++){
-      if(String(v[i][0])===String(p.seq)){
-        if(p.phone1!=null)sh.getRange(i+1,8).setValue(p.phone1);
-        if(p.phone2!=null)sh.getRange(i+1,9).setValue(p.phone2);
-        if(p.shirt!=null) sh.getRange(i+1,11).setValue(p.shirt);
-        if(p.email!=null) sh.getRange(i+1,12).setValue(p.email);
-        if(p.rank!=null)  sh.getRange(i+1,3).setValue(p.rank);
-        if(p.fullname!=null)sh.getRange(i+1,4).setValue(p.fullname);
-        if(p.nickname!=null)sh.getRange(i+1,5).setValue(p.nickname);
-        if(p.position!=null)sh.getRange(i+1,6).setValue(p.position);
-        if(p.unit!=null)  sh.getRange(i+1,7).setValue(p.unit);
-        if(p.birthday!=null)sh.getRange(i+1,13).setValue(p.birthday);
-        break;
+        <textarea readonly style="width:100%;box-sizing:border-box;margin-top:0.4rem;font-size:0.7rem;font-family:monospace;height:200px;border:1px solid #ddd;border-radius:6px;padding:6px;resize:none;background:#fff">// วางโค้ดนี้ใน Code.gs แล้ว Deploy ใหม่ (Execute as: Me, Access: Anyone)
+function doGet(e) {
+  try {
+    var p = e.parameter;
+    if (!p.seq || p.seq === 'ping') {
+      return ContentService.createTextOutput(JSON.stringify({ok:true,msg:'pong'}))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss.getSheetByName('UPDATE 09 ก.ย.68') || ss.getSheets()[1];
+    var v = sh.getDataRange().getValues();
+    // COL = 1-indexed column numbers ตาม sheet จริง
+    var COL = {rank:3,fullname:4,nickname:5,position:6,unit:7,phone1:8,phone2:9,shirt:11,email:12,birthday:13};
+    for (var i = 1; i < v.length; i++) {
+      // ถ้า column A ว่าง ให้ใช้ row index (i) เป็น seq แทน — ตรงกับ JS ที่ใช้ i+1
+      var rowSeq = v[i][0] !== '' && v[i][0] != null ? String(v[i][0]) : String(i);
+      if (rowSeq === String(p.seq)) {
+        // debug: แสดง column ทั้งหมดใน row ที่พบก่อนเขียน
+        var rowData = {};
+        for (var c = 0; c < v[i].length; c++) {
+          if (v[i][c] !== '') rowData['col'+(c+1)] = String(v[i][c]);
+        }
+        var written = {};
+        for (var key in COL) {
+          if (p[key] !== undefined && p[key] !== '') {
+            sh.getRange(i+1, COL[key]).setValue(p[key]);
+            written[key] = 'col'+COL[key];
+          }
+        }
+        SpreadsheetApp.flush();
+        return ContentService.createTextOutput(JSON.stringify({ok:true,row:i+1,seq:rowSeq,written:written,rowData:rowData}))
+          .setMimeType(ContentService.MimeType.JSON);
       }
     }
-    return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);
-  }catch(err){
-    return ContentService.createTextOutput(JSON.stringify({ok:false,error:err.message})).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ok:false,msg:'seq not found',tried:String(p.seq)}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({ok:false,error:err.message}))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }</textarea>
       </div>
@@ -1680,25 +1700,35 @@ function showAppsScriptHelp() {
   return false;
 }
 
+function testAppsScriptUrl() {
+  const url = (document.getElementById('apps-script-url')?.value || localStorage.getItem('appsScriptUrl') || '').trim();
+  if (!url) { showToast('ยังไม่ได้ใส่ URL'); return; }
+  const testUrl = url + (url.includes('?') ? '&' : '?') + 'seq=ping';
+  window.open(testUrl, '_blank');
+  const st = document.getElementById('apps-script-status');
+  if (st) st.innerHTML = '<span style="color:#1a6f1a">เปิด tab ใหม่แล้ว — ถ้าเห็น {"ok":true,"msg":"pong"} แสดงว่า Apps Script พร้อมใช้งาน</span>';
+}
+
 async function syncToSheet(seq, data) {
   const url = localStorage.getItem('appsScriptUrl') || '';
   if (!url) return;
-  // กรองฟิลด์ที่ไม่ serialize ได้ และรูปภาพ
-  const SKIP = new Set(['updatedAt', 'photoUrl', 'importedAt']);
+  const SKIP = new Set(['updatedAt', 'photoUrl', 'importedAt', 'id', 'branch']);
   const payload = { seq: String(seq) };
   for (const [k, v] of Object.entries(data)) {
     if (!SKIP.has(k) && v !== undefined && v !== null && typeof v !== 'object') {
       payload[k] = String(v);
     }
   }
+  const qs = new URLSearchParams(payload).toString();
+  const fullUrl = url + (url.includes('?') ? '&' : '?') + qs;
+  console.log('[syncToSheet] seq=' + seq + ' url=' + fullUrl);
   try {
-    // ใช้ GET + query params เพราะ Apps Script redirect 302 จะทำให้ POST body หายไป
-    const qs = new URLSearchParams(payload).toString();
-    await fetch(url + (url.includes('?') ? '&' : '?') + qs, { mode: 'no-cors' });
-    showToast('📤 อัพเดท Sheet แล้ว ✓');
+    await fetch(fullUrl, { mode: 'no-cors' });
+    console.log('[syncToSheet] fetch sent (no-cors — ไม่เห็น response)');
+    showToast('📤 ส่งข้อมูลไป Sheet แล้ว');
   } catch(e) {
-    console.warn('Sheet sync error:', e.message);
-    showToast('⚠️ Sheet ไม่อัพเดท: ' + e.message);
+    console.error('[syncToSheet] error:', e.message);
+    showToast('⚠️ Sheet sync error: ' + e.message);
   }
 }
 
