@@ -87,13 +87,42 @@ body {
 }
 #dir-sticky { position:sticky; top:0; z-index:100; }
 #simple-header { position:sticky; top:0; z-index:100; }
-.search-filter-sel {
+/* Unit filter custom dropdown */
+.unit-filter-btn {
   background:rgba(255,255,255,0.15); border:none; outline:none;
   color:#fff; font-family:var(--font); font-size:0.76rem;
-  border-radius:12px; padding:3px 6px; cursor:pointer; flex-shrink:0;
-  -webkit-appearance:none; appearance:none; text-align:center;
+  border-radius:12px; padding:3px 9px; cursor:pointer; flex-shrink:0;
+  display:flex; align-items:center; gap:3px; line-height:1.4;
 }
-.search-filter-sel option { color:#1a1a2e; background:#fff; }
+.unit-filter-btn .ufa { font-size:0.55rem; opacity:0.8; }
+.unit-filter-panel {
+  position:fixed; background:#fff; border-radius:12px;
+  box-shadow:0 6px 24px rgba(0,0,0,0.18); z-index:500;
+  width:200px; overflow:hidden; display:none;
+}
+.unit-scroll-btn {
+  display:block; width:100%; background:#f8f8f8; border:none;
+  font-size:0.72rem; color:#888; padding:5px; cursor:pointer; line-height:1.3;
+}
+.unit-scroll-btn:disabled { opacity:0.2; cursor:default; }
+.unit-list { max-height:215px; overflow-y:auto; scrollbar-width:none; }
+.unit-list::-webkit-scrollbar { display:none; }
+.unit-item {
+  padding:0.5rem 1rem; font-family:var(--font); font-size:0.85rem;
+  cursor:pointer; border-bottom:1px solid #f5f5f5; color:#1a1a2e;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.unit-item:last-child { border-bottom:none; }
+.unit-item:hover, .unit-item:active { background:#f5f7fa; }
+.unit-item.sel { color:var(--theme,#1a3a5c); font-weight:700; }
+/* Admin scroll wrap */
+.admin-scroll-wrap { position:relative; }
+.admin-scroll-ind {
+  position:sticky; z-index:10; text-align:center; font-size:0.68rem;
+  color:#aaa; cursor:pointer; padding:4px; display:none; user-select:none;
+}
+.admin-scroll-ind.top-ind { top:0; background:linear-gradient(to bottom,#f5f6fa 60%,transparent); }
+.admin-scroll-ind.bot-ind { bottom:0; background:linear-gradient(to top,#f5f6fa 60%,transparent); }
 .btn-import {
   width:100%; padding:0.6rem; background:var(--theme,#1a3a5c); color:#fff;
   border:none; border-radius:8px; font-family:var(--font); font-size:0.9rem;
@@ -494,9 +523,10 @@ body {
       <div class="search-box">
         <svg class="search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input type="text" id="search-input" placeholder="ค้นหา...">
-        <select id="unit-filter" class="search-filter-sel" title="กรองตามหน่วย">
-          <option value="all">ทุกหน่วย</option>
-        </select>
+        <button class="unit-filter-btn" id="unit-filter-btn" onclick="toggleUnitFilter(event)">
+          <span id="unit-filter-label">ทุกหน่วย</span>
+          <span class="ufa">▼</span>
+        </button>
       </div>
     </div>
     <!-- Filter Chips -->
@@ -640,8 +670,12 @@ body {
     </div>
 
     <div class="admin-section-label" style="margin-top:1.25rem" id="admin-users-label">ผูกบัญชีกับสมาชิก</div>
-    <div id="admin-users-list">
-      <div style="text-align:center;color:#aaa;font-size:0.85rem;padding:1rem">กำลังโหลด...</div>
+    <div class="admin-scroll-wrap">
+      <div class="admin-scroll-ind top-ind" id="users-ind-top" onclick="scrollAdminList(-200)">▲ เลื่อนขึ้น</div>
+      <div id="admin-users-list">
+        <div style="text-align:center;color:#aaa;font-size:0.85rem;padding:1rem">กำลังโหลด...</div>
+      </div>
+      <div class="admin-scroll-ind bot-ind" id="users-ind-bot" onclick="scrollAdminList(200)">▼ เลื่อนลง</div>
     </div>
 
     <div class="admin-section-label" style="margin-top:1.25rem">แก้ไขข้อมูลสมาชิก</div>
@@ -667,6 +701,54 @@ body {
       ☁️ นำเข้าข้อมูลจาก Sheet → Firebase
     </button>
     <div id="import-status" style="font-size:0.8rem;color:#666;margin-top:0.4rem;text-align:center"></div>
+
+    <div class="admin-section-label" style="margin-top:1.25rem">อัพเดท Sheet อัตโนมัติ (Google Apps Script)</div>
+    <div class="admin-tip-card" style="padding-bottom:0.5rem;font-size:0.78rem">
+      วาง URL ของ Google Apps Script Web App ด้านล่าง เพื่อให้แก้ไขข้อมูลแล้วอัพเดทใน Sheet พร้อมกัน<br>
+      <a href="#" onclick="showAppsScriptHelp()" style="color:var(--theme);font-size:0.75rem">ดูวิธีติดตั้ง Apps Script ▶</a>
+    </div>
+    <input id="apps-script-url" type="url" placeholder="https://script.google.com/macros/s/..."
+      style="width:100%;box-sizing:border-box;padding:0.5rem 0.7rem;border:1.5px solid #ddd;border-radius:8px;font-family:var(--font);font-size:0.82rem;margin-top:0.25rem;outline:none">
+    <button onclick="saveAppsScriptUrl()" style="margin-top:0.4rem;width:100%;background:var(--theme,#1a3a5c);color:#fff;border:none;border-radius:8px;padding:0.45rem;font-family:var(--font);font-size:0.85rem;cursor:pointer">💾 บันทึก URL</button>
+    <div id="apps-script-status" style="font-size:0.75rem;color:#666;margin-top:0.3rem;text-align:center"></div>
+
+    <!-- Apps Script help -->
+    <div id="apps-script-help" style="display:none;margin-top:0.75rem">
+      <div class="admin-tip-card" style="font-size:0.75rem;background:#f0f4ff;border:1px solid #c0d4ff">
+        <strong>วิธีติดตั้ง:</strong><br>
+        1. เปิด Google Sheet → Extensions → Apps Script<br>
+        2. วางโค้ดนี้ใน Code.gs แล้วกด Deploy → Web App<br>
+        3. ตั้งค่า "Who has access" = Anyone<br>
+        4. คัดลอก URL มาวางในช่องด้านบน<br><br>
+        <strong>โค้ด Apps Script:</strong>
+        <textarea readonly style="width:100%;box-sizing:border-box;margin-top:0.4rem;font-size:0.7rem;font-family:monospace;height:160px;border:1px solid #ddd;border-radius:6px;padding:6px;resize:none;background:#fff">// ใช้ doGet เพราะ 302 redirect ของ Apps Script จะทำให้ POST body หายไป
+function doGet(e){
+  try{
+    var p=e.parameter;
+    var sh=SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+    var v=sh.getDataRange().getValues();
+    for(var i=1;i<v.length;i++){
+      if(String(v[i][0])===String(p.seq)){
+        if(p.phone1!=null)sh.getRange(i+1,8).setValue(p.phone1);
+        if(p.phone2!=null)sh.getRange(i+1,9).setValue(p.phone2);
+        if(p.shirt!=null) sh.getRange(i+1,11).setValue(p.shirt);
+        if(p.email!=null) sh.getRange(i+1,12).setValue(p.email);
+        if(p.rank!=null)  sh.getRange(i+1,3).setValue(p.rank);
+        if(p.fullname!=null)sh.getRange(i+1,4).setValue(p.fullname);
+        if(p.nickname!=null)sh.getRange(i+1,5).setValue(p.nickname);
+        if(p.position!=null)sh.getRange(i+1,6).setValue(p.position);
+        if(p.unit!=null)  sh.getRange(i+1,7).setValue(p.unit);
+        if(p.birthday!=null)sh.getRange(i+1,13).setValue(p.birthday);
+        break;
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);
+  }catch(err){
+    return ContentService.createTextOutput(JSON.stringify({ok:false,error:err.message})).setMimeType(ContentService.MimeType.JSON);
+  }
+}</textarea>
+      </div>
+    </div>
   </div>
 
   <!-- Bottom Nav -->
@@ -1092,7 +1174,11 @@ function parseCSV(text) {
 
 // ═══ FILTER & RENDER ═══
 document.getElementById('search-input').addEventListener('input', filterAndRender);
-document.getElementById('unit-filter').addEventListener('change', filterAndRender);
+document.addEventListener('click', e => {
+  if (!e.target.closest('#unit-filter-btn') && !e.target.closest('#unit-filter-panel')) {
+    closeUnitFilter();
+  }
+});
 const BRANCH_SCHOOL = {
   all: '',
   ตร: 'โรงเรียนนายร้อยตำรวจ',
@@ -1120,18 +1206,75 @@ document.querySelectorAll('.chip').forEach(btn => {
   });
 });
 
+let currentUnitFilter = 'all';
+let _unitOptions = [];
+
 function populateUnitFilter() {
-  const sel = document.getElementById('unit-filter');
-  if (!sel) return;
-  const prev = sel.value;
   const units = [...new Set(allMembers.map(m => m.unit).filter(Boolean))].sort((a,b) => a.localeCompare(b,'th'));
-  sel.innerHTML = '<option value="all">ทุกหน่วย</option>' +
-    units.map(u => `<option value="${escHtml(u)}"${u===prev?' selected':''}>${escHtml(u)}</option>`).join('');
+  _unitOptions = [{val:'all', label:'ทุกหน่วย'}, ...units.map(u => ({val:u, label:u}))];
+  const list = document.getElementById('unit-list');
+  if (!list) return;
+  list.innerHTML = _unitOptions.map((u, i) =>
+    `<div class="unit-item${currentUnitFilter===u.val?' sel':''}" onclick="selectUnitByIdx(${i})">${escHtml(u.label)}</div>`
+  ).join('');
+  list.removeEventListener('scroll', updateUnitScrollBtns);
+  list.addEventListener('scroll', updateUnitScrollBtns);
+  updateUnitScrollBtns();
+}
+
+function toggleUnitFilter(e) { e?.stopPropagation(); unitFilterOpen ? closeUnitFilter() : openUnitFilter(); }
+let unitFilterOpen = false;
+
+function openUnitFilter() {
+  unitFilterOpen = true;
+  const btn = document.getElementById('unit-filter-btn');
+  const panel = document.getElementById('unit-filter-panel');
+  const rect = btn.getBoundingClientRect();
+  panel.style.display = 'block';
+  const panelW = 200;
+  panel.style.top  = (rect.bottom + 4) + 'px';
+  panel.style.left = Math.min(rect.left, window.innerWidth - panelW - 8) + 'px';
+  updateUnitScrollBtns();
+  // scroll to selected
+  const sel = document.querySelector('#unit-list .unit-item.sel');
+  if (sel) sel.scrollIntoView({block:'nearest'});
+}
+
+function closeUnitFilter() {
+  unitFilterOpen = false;
+  const p = document.getElementById('unit-filter-panel');
+  if (p) p.style.display = 'none';
+}
+
+function selectUnitByIdx(i) {
+  const opt = _unitOptions[i];
+  if (!opt) return;
+  currentUnitFilter = opt.val;
+  document.getElementById('unit-filter-label').textContent = opt.label;
+  document.querySelectorAll('#unit-list .unit-item').forEach((el, idx) =>
+    el.classList.toggle('sel', idx === i));
+  closeUnitFilter();
+  filterAndRender();
+}
+
+function scrollUnitList(dir) {
+  const list = document.getElementById('unit-list');
+  list.scrollBy({ top: dir * 120, behavior:'smooth' });
+  setTimeout(updateUnitScrollBtns, 180);
+}
+
+function updateUnitScrollBtns() {
+  const list = document.getElementById('unit-list');
+  if (!list) return;
+  const up = document.getElementById('unit-up-btn');
+  const dn = document.getElementById('unit-dn-btn');
+  if (up) up.disabled = list.scrollTop <= 0;
+  if (dn) dn.disabled = list.scrollTop + list.clientHeight >= list.scrollHeight - 1;
 }
 
 function filterAndRender() {
   const q    = (document.getElementById('search-input').value || '').trim().toLowerCase();
-  const unit = document.getElementById('unit-filter')?.value || 'all';
+  const unit = currentUnitFilter || 'all';
   filteredMembers = allMembers.filter(m => {
     const branchOk = currentBranch === 'all' || m.branch === currentBranch;
     const unitOk   = unit === 'all' || m.unit === unit;
@@ -1503,6 +1646,8 @@ async function saveMemberEdit() {
     } catch(fe) { /* members collection ยังไม่มี — ข้ามได้ */ }
     const idx = allMembers.findIndex(m => m.id === currentEditMemberId);
     if (idx !== -1) { allMembers[idx] = { ...allMembers[idx], ...data }; }
+    // อัพเดท Google Sheet ถ้าตั้ง Apps Script URL ไว้
+    syncToSheet(currentEditMemberId, data);
     closeMemberEdit();
     closeDetail();
     filterAndRender();
@@ -1519,6 +1664,43 @@ function closeMemberEdit() {
   pendingPhotoDataUrl = null;
 }
 function closeMemberEditIfOutside(e) { if(e.target.id==='member-edit-overlay') closeMemberEdit(); }
+
+// ═══ APPS SCRIPT SHEET SYNC ═══
+function saveAppsScriptUrl() {
+  const url = (document.getElementById('apps-script-url')?.value || '').trim();
+  localStorage.setItem('appsScriptUrl', url);
+  const st = document.getElementById('apps-script-status');
+  if (st) st.textContent = url ? '✓ บันทึกแล้ว — จะอัพเดท Sheet ทุกครั้งที่แก้ไขข้อมูล' : 'ลบ URL แล้ว';
+  showToast(url ? 'บันทึก Apps Script URL แล้ว ✓' : 'ยกเลิก Sheet sync แล้ว');
+}
+
+function showAppsScriptHelp() {
+  const h = document.getElementById('apps-script-help');
+  if (h) h.style.display = h.style.display === 'none' ? 'block' : 'none';
+  return false;
+}
+
+async function syncToSheet(seq, data) {
+  const url = localStorage.getItem('appsScriptUrl') || '';
+  if (!url) return;
+  // กรองฟิลด์ที่ไม่ serialize ได้ และรูปภาพ
+  const SKIP = new Set(['updatedAt', 'photoUrl', 'importedAt']);
+  const payload = { seq: String(seq) };
+  for (const [k, v] of Object.entries(data)) {
+    if (!SKIP.has(k) && v !== undefined && v !== null && typeof v !== 'object') {
+      payload[k] = String(v);
+    }
+  }
+  try {
+    // ใช้ GET + query params เพราะ Apps Script redirect 302 จะทำให้ POST body หายไป
+    const qs = new URLSearchParams(payload).toString();
+    await fetch(url + (url.includes('?') ? '&' : '?') + qs, { mode: 'no-cors' });
+    showToast('📤 อัพเดท Sheet แล้ว ✓');
+  } catch(e) {
+    console.warn('Sheet sync error:', e.message);
+    showToast('⚠️ Sheet ไม่อัพเดท: ' + e.message);
+  }
+}
 
 // ═══ IMPORT SHEET → FIREBASE ═══
 async function importMembersToFirebase() {
@@ -1656,6 +1838,11 @@ async function loadAdminPage() {
       const role = u.role || 'member';
       const isSelf = u.uid === currentUser?.uid;
       const linked = u.memberId ? allMembers.find(m => m.id === u.memberId) : null;
+      // รูปภาพ: ใช้รูปสมาชิกที่ผูก → photoURL จาก userProfile → ตัวอักษร
+      const photoSrc = linked?.photoUrl || u.photoURL || '';
+      const avatarInner = photoSrc
+        ? `<img src="${photoSrc}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.innerHTML='👤'">`
+        : '👤';
       const linkedHtml = linked
         ? `<div class="user-role-linked-badge">🔗 ${escHtml(linked.rank)} ${escHtml(linked.fullname)}</div>`
         : `<div class="user-role-linked-badge none">ยังไม่ผูกสมาชิก</div>`;
@@ -1669,7 +1856,7 @@ async function loadAdminPage() {
       return `
         <div class="user-role-card">
           <div class="user-card-top">
-            <div class="user-role-avatar">👤</div>
+            <div class="user-role-avatar" style="overflow:hidden">${avatarInner}</div>
             <div class="user-role-info" style="flex:1">
               <div class="user-role-name">${escHtml(u.displayName || u.email || u.uid)}</div>
               <div class="user-role-email">${escHtml(u.email || '')}</div>
@@ -1680,10 +1867,35 @@ async function loadAdminPage() {
           <button class="btn-link" onclick="openLinkOverlay('${u.uid}')">🔗 ${linked ? 'เปลี่ยนสมาชิกที่ผูก' : 'ผูกสมาชิก'}</button>
         </div>`;
     }).join('');
+
+    // scroll indicators
+    listEl.removeEventListener('scroll', updateAdminScrollInds);
+    listEl.addEventListener('scroll', updateAdminScrollInds);
+    updateAdminScrollInds();
+
+    // โหลด Apps Script URL จาก localStorage
+    const savedUrl = localStorage.getItem('appsScriptUrl') || '';
+    const urlInput = document.getElementById('apps-script-url');
+    if (urlInput && savedUrl) urlInput.value = savedUrl;
   } catch(e) {
     listEl.innerHTML = '<p style="color:#d60000;font-size:0.85rem;text-align:center;padding:1rem">ไม่สามารถโหลดข้อมูลได้<br><small>ตรวจสอบ Firestore Rules</small></p>';
     console.error(e);
   }
+}
+
+function updateAdminScrollInds() {
+  const el  = document.getElementById('admin-users-list');
+  const top = document.getElementById('users-ind-top');
+  const bot = document.getElementById('users-ind-bot');
+  if (!el || !top || !bot) return;
+  top.style.display = el.scrollTop > 4   ? 'block' : 'none';
+  bot.style.display = el.scrollTop + el.clientHeight < el.scrollHeight - 4 ? 'block' : 'none';
+}
+
+function scrollAdminList(px) {
+  const el = document.getElementById('admin-users-list');
+  if (el) el.scrollBy({ top: px, behavior:'smooth' });
+  setTimeout(updateAdminScrollInds, 200);
 }
 
 async function setUserRole(uid, role) {
@@ -2024,5 +2236,12 @@ function openFullImg(src) {
   document.getElementById('chat-img-full').classList.add('open');
 }
 </script>
+
+<!-- Unit filter floating panel -->
+<div class="unit-filter-panel" id="unit-filter-panel">
+  <button class="unit-scroll-btn" id="unit-up-btn" onclick="scrollUnitList(-1)">▲</button>
+  <div class="unit-list" id="unit-list"></div>
+  <button class="unit-scroll-btn" id="unit-dn-btn" onclick="scrollUnitList(1)">▼</button>
+</div>
 </body>
 </html>
