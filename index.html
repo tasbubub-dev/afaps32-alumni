@@ -1028,6 +1028,7 @@ auth.onAuthStateChanged(user => {
     document.getElementById('app').style.display = 'flex';
     loadUserProfile();
     loadMembers();
+    loadAppsScriptConfig();
   } else {
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
@@ -1686,11 +1687,29 @@ function closeMemberEdit() {
 function closeMemberEditIfOutside(e) { if(e.target.id==='member-edit-overlay') closeMemberEdit(); }
 
 // ═══ APPS SCRIPT SHEET SYNC ═══
-function saveAppsScriptUrl() {
+let _appsScriptUrl = localStorage.getItem('appsScriptUrl') || '';
+
+async function loadAppsScriptConfig() {
+  try {
+    const doc = await db.collection('config').doc('appsScript').get();
+    if (doc.exists && doc.data().url) {
+      _appsScriptUrl = doc.data().url;
+      localStorage.setItem('appsScriptUrl', _appsScriptUrl);
+      const inp = document.getElementById('apps-script-url');
+      if (inp) inp.value = _appsScriptUrl;
+    }
+  } catch(e) {}
+}
+
+async function saveAppsScriptUrl() {
   const url = (document.getElementById('apps-script-url')?.value || '').trim();
+  _appsScriptUrl = url;
   localStorage.setItem('appsScriptUrl', url);
+  try {
+    await db.collection('config').doc('appsScript').set({ url });
+  } catch(e) { console.warn('Firestore config save error:', e.message); }
   const st = document.getElementById('apps-script-status');
-  if (st) st.textContent = url ? '✓ บันทึกแล้ว — จะอัพเดท Sheet ทุกครั้งที่แก้ไขข้อมูล' : 'ลบ URL แล้ว';
+  if (st) st.textContent = url ? '✓ บันทึกแล้วทุก device จะใช้ URL นี้' : 'ลบ URL แล้ว';
   showToast(url ? 'บันทึก Apps Script URL แล้ว ✓' : 'ยกเลิก Sheet sync แล้ว');
 }
 
@@ -1701,7 +1720,7 @@ function showAppsScriptHelp() {
 }
 
 function testAppsScriptUrl() {
-  const url = (document.getElementById('apps-script-url')?.value || localStorage.getItem('appsScriptUrl') || '').trim();
+  const url = (document.getElementById('apps-script-url')?.value || _appsScriptUrl || '').trim();
   if (!url) { showToast('ยังไม่ได้ใส่ URL'); return; }
   const testUrl = url + (url.includes('?') ? '&' : '?') + 'seq=ping';
   window.open(testUrl, '_blank');
@@ -1710,7 +1729,7 @@ function testAppsScriptUrl() {
 }
 
 async function syncToSheet(seq, data) {
-  const url = localStorage.getItem('appsScriptUrl') || '';
+  const url = _appsScriptUrl || '';
   if (!url) return;
   const SKIP = new Set(['updatedAt', 'photoUrl', 'importedAt', 'id', 'branch']);
   const payload = { seq: String(seq) };
@@ -1903,10 +1922,10 @@ async function loadAdminPage() {
     listEl.addEventListener('scroll', updateAdminScrollInds);
     updateAdminScrollInds();
 
-    // โหลด Apps Script URL จาก localStorage
-    const savedUrl = localStorage.getItem('appsScriptUrl') || '';
+    // โหลด Apps Script URL จาก Firestore (fallback localStorage)
     const urlInput = document.getElementById('apps-script-url');
-    if (urlInput && savedUrl) urlInput.value = savedUrl;
+    if (urlInput) urlInput.value = _appsScriptUrl;
+    loadAppsScriptConfig();
   } catch(e) {
     listEl.innerHTML = '<p style="color:#d60000;font-size:0.85rem;text-align:center;padding:1rem">ไม่สามารถโหลดข้อมูลได้<br><small>ตรวจสอบ Firestore Rules</small></p>';
     console.error(e);
