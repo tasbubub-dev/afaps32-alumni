@@ -1047,6 +1047,7 @@ function phoneToEmail(phone) { return phone + '@tat32.app'; }
 
 // Pre-load phone→email map from Sheet before auth (Sheet CSV is public)
 let phoneEmailMap = {};
+let _phoneEmailMapReady = null; // Promise — doLogin จะ await นี้ก่อนใช้ map
 async function preloadPhoneEmailMap() {
   try {
     const res  = await fetch(SHEETS_CSV_URL);
@@ -1063,7 +1064,7 @@ async function preloadPhoneEmailMap() {
     });
   } catch(e) { console.warn('phone-email preload:', e.message); }
 }
-preloadPhoneEmailMap();
+_phoneEmailMapReady = preloadPhoneEmailMap();
 
 async function doLogin() {
   const phone = (document.getElementById('login-phone').value || '').trim().replace(/[-\s]/g,'');
@@ -1077,7 +1078,8 @@ async function doLogin() {
 
   btn.textContent = 'กำลังเข้าสู่ระบบ...';
   btn.disabled = true;
-  // ใช้ email จริงจาก Sheet ถ้ามี ไม่งั้นใช้ virtual email
+  // รอให้ phoneEmailMap โหลดเสร็จก่อนเสมอ เพื่อป้องกัน virtual account ถูกสร้างโดยไม่จำเป็น
+  await _phoneEmailMapReady;
   const vEmail = phoneEmailMap[phone] || phoneToEmail(phone);
 
   try {
