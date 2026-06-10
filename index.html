@@ -1055,7 +1055,8 @@ function phoneToEmail(phone) { return phone + '@tat32.app'; }
 
 // Pre-load phone→email map from Sheet before auth (Sheet CSV is public)
 let phoneEmailMap = {};
-let _phoneEmailMapReady = null; // Promise — doLogin จะ await นี้ก่อนใช้ map
+let _validPhones = new Set(); // เบอร์ทั้งหมดที่มีใน sheet (ใช้เช็คสิทธิ์ login)
+let _phoneEmailMapReady = null;
 async function preloadPhoneEmailMap() {
   try {
     const res  = await fetch(SHEETS_CSV_URL);
@@ -1063,11 +1064,13 @@ async function preloadPhoneEmailMap() {
     const rows = parseCSV(text);
     if (rows.length < 2) return;
     rows.slice(1).forEach(r => {
-      const email  = (r[COL.email] || '').trim().toLowerCase();
-      if (!email) return;
+      const email = (r[COL.email] || '').trim().toLowerCase();
       [r[COL.phone1], r[COL.phone2]].forEach(p => {
         const ph = (p || '').replace(/[-\s]/g,'').trim();
-        if (/^\d{9,10}$/.test(ph)) phoneEmailMap[ph] = email;
+        if (/^\d{9,10}$/.test(ph)) {
+          _validPhones.add(ph);
+          if (email) phoneEmailMap[ph] = email;
+        }
       });
     });
   } catch(e) { console.warn('phone-email preload:', e.message); }
@@ -1084,10 +1087,17 @@ async function doLogin() {
   if (!/^\d{10}$/.test(phone)) { errEl.textContent = 'เบอร์โทรต้องเป็นตัวเลข 10 หลัก'; return; }
   if (!pass)  { errEl.textContent = 'กรุณากรอกรหัสผ่าน'; return; }
 
-  btn.textContent = 'กำลังเข้าสู่ระบบ...';
+  btn.textContent = 'กำลังตรวจสอบ...';
   btn.disabled = true;
-  // รอให้ phoneEmailMap โหลดเสร็จก่อนเสมอ เพื่อป้องกัน virtual account ถูกสร้างโดยไม่จำเป็น
   await _phoneEmailMapReady;
+  // เช็คสิทธิ์ — เบอร์ต้องมีใน sheet เท่านั้น
+  if (!_validPhones.has(phone)) {
+    errEl.textContent = 'ไม่มีสิทธิ์ใช้งาน';
+    btn.textContent = 'เข้าสู่ระบบ';
+    btn.disabled = false;
+    return;
+  }
+  btn.textContent = 'กำลังเข้าสู่ระบบ...';
   const vEmail = phoneEmailMap[phone] || phoneToEmail(phone);
 
   try {
