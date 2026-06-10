@@ -420,8 +420,10 @@ body {
 #admin-users-list::-webkit-scrollbar-thumb { background:#ddd; border-radius:2px; }
 
 /* ── ACCOUNT MENU ── */
-.acct-btn { background:rgba(255,255,255,0.2); border:none; border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; flex-shrink:0; }
-.acct-menu { display:none; position:fixed; top:52px; right:8px; background:#fff; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.15); min-width:170px; z-index:300; overflow:hidden; }
+.acct-btn { background:none; border:none; border-radius:6px; display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer; color:#fff; flex-shrink:0; padding:2px 4px; }
+.acct-circle { background:rgba(255,255,255,0.2); border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; }
+.acct-label { font-size:0.58rem; font-family:var(--font); color:rgba(255,255,255,0.9); line-height:1; }
+.acct-menu { display:none; position:fixed; top:56px; right:8px; background:#fff; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.15); min-width:170px; z-index:300; overflow:hidden; }
 .acct-menu.open { display:block; }
 .acct-menu button { display:block; width:100%; padding:0.75rem 1rem; background:none; border:none; font-family:var(--font); font-size:0.88rem; text-align:left; cursor:pointer; color:#1a1a2e; border-bottom:1px solid #f0f0f0; }
 .acct-menu button:last-child { border-bottom:none; color:#d60000; }
@@ -505,6 +507,7 @@ body {
     <div class="form-group">
       <label>รหัสผ่าน <small style="color:#aaa;font-weight:400">(เริ่มต้น 123456)</small></label>
       <input type="password" id="login-password" placeholder="รหัสผ่าน" autocomplete="current-password">
+      <small style="color:#e8a020;font-size:0.75rem;margin-top:4px;display:block">⚠️ กรุณาเปลี่ยนรหัสผ่านใหม่หลังเข้าระบบครั้งแรก ที่ <strong>โปรไฟล์</strong> มุมขวาบน</small>
     </div>
     <button class="btn-login" id="btn-do-login">เข้าสู่ระบบ</button>
     <p class="login-err" id="login-err"></p>
@@ -525,7 +528,8 @@ body {
         </div>
         <span class="header-count" id="header-count">0 คน</span>
         <button class="acct-btn" onclick="toggleAccountMenu()" id="acct-btn-main" title="บัญชีผู้ใช้">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          <div class="acct-circle" id="acct-circle-main"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div>
+          <span class="acct-label">โปรไฟล์</span>
         </button>
       </div>
       <div class="search-box">
@@ -556,7 +560,8 @@ body {
         <div class="header-sub">ทำเนียบรุ่น ตท.32</div>
       </div>
       <button class="acct-btn" onclick="toggleAccountMenu()" id="acct-btn-simple" title="บัญชีผู้ใช้">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <div class="acct-circle" id="acct-circle-simple"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div>
+        <span class="acct-label">โปรไฟล์</span>
       </button>
     </div>
   </div>
@@ -776,6 +781,23 @@ function doGet(e) {
   }
 }</textarea>
       </div>
+    </div>
+
+    <!-- ตั้งค่าประชาสัมพันธ์ + ภาพถ่าย (admin ทุกระดับ) -->
+    <div id="admin-content-section" style="display:none">
+      <div class="admin-section-label" style="margin-top:1.5rem">ตั้งค่าหน้าประชาสัมพันธ์</div>
+      <div class="admin-tip-card" style="padding-bottom:0.5rem;font-size:0.78rem">เพิ่ม/แก้ไขประกาศที่แสดงในแท็บ ประชาสัมพันธ์</div>
+      <div id="pr-items-list" style="margin-bottom:0.5rem"></div>
+      <button onclick="addPrItem()" style="width:100%;background:#e8f0fe;color:#1a3a5c;border:1.5px dashed #aac4f0;border-radius:8px;padding:0.5rem;font-family:var(--font);font-size:0.85rem;cursor:pointer;margin-bottom:0.25rem">+ เพิ่มประกาศใหม่</button>
+      <button onclick="savePrItems()" style="width:100%;background:var(--theme,#1a3a5c);color:#fff;border:none;border-radius:8px;padding:0.5rem;font-family:var(--font);font-size:0.85rem;cursor:pointer">💾 บันทึกประชาสัมพันธ์</button>
+      <div id="pr-save-status" style="font-size:0.75rem;color:#666;margin-top:0.3rem;text-align:center"></div>
+
+      <div class="admin-section-label" style="margin-top:1.25rem">ลิงค์อัลบั้มภาพถ่าย</div>
+      <div class="admin-tip-card" style="padding-bottom:0.5rem;font-size:0.78rem">วางลิงค์อัลบั้มภาพที่ต้องการแสดงในแท็บ ภาพถ่าย (เช่น Google Photos)</div>
+      <div id="album-links-list" style="margin-bottom:0.5rem"></div>
+      <button onclick="addAlbumLink()" style="width:100%;background:#e8f0fe;color:#1a3a5c;border:1.5px dashed #aac4f0;border-radius:8px;padding:0.5rem;font-family:var(--font);font-size:0.85rem;cursor:pointer;margin-bottom:0.25rem">+ เพิ่มลิงค์อัลบั้ม</button>
+      <button onclick="saveAlbumLinks()" style="width:100%;background:var(--theme,#1a3a5c);color:#fff;border:none;border-radius:8px;padding:0.5rem;font-family:var(--font);font-size:0.85rem;cursor:pointer">💾 บันทึกลิงค์ภาพถ่าย</button>
+      <div id="album-save-status" style="font-size:0.75rem;color:#666;margin-top:0.3rem;text-align:center"></div>
     </div>
   </div>
 
@@ -1887,6 +1909,9 @@ async function loadAdminPage() {
   // แสดง/ซ่อน section ตาม role
   const adminOnly = isAdmin();
   document.getElementById('admin-role-section').style.display = adminOnly ? 'block' : 'none';
+  const contentSection = document.getElementById('admin-content-section');
+  if (contentSection) contentSection.style.display = (adminOnly || isEditor()) ? 'block' : 'none';
+  loadContentConfig();
   const usersLabel = document.getElementById('admin-users-label');
   if (usersLabel) usersLabel.textContent = adminOnly ? 'ผูกบัญชีกับสมาชิก / บทบาทผู้ใช้' : 'ผูกบัญชีกับสมาชิก (สาขาของคุณ)';
 
@@ -2127,14 +2152,125 @@ function updateAccountBtn() {
     inner = `<span style="font-size:0.8rem;font-weight:700;color:#fff">${initial}</span>`;
   }
 
-  ['acct-btn-main', 'acct-btn-simple'].forEach(id => {
-    const btn = document.getElementById(id);
-    if (!btn) return;
-    btn.innerHTML = inner;
-    btn.style.background = photoSrc ? 'transparent' : bt.color;
-    btn.style.overflow = 'hidden';
-    btn.style.padding = photoSrc ? '0' : '';
+  [['acct-circle-main','acct-btn-main'], ['acct-circle-simple','acct-btn-simple']].forEach(([cid, bid]) => {
+    const circle = document.getElementById(cid);
+    if (!circle) return;
+    circle.innerHTML = inner;
+    circle.style.background = photoSrc ? 'transparent' : bt.color;
   });
+}
+
+// ═══ PR & PHOTOS ADMIN SETTINGS ═══
+let _prItems = [];
+let _albumLinks = [];
+
+async function loadContentConfig() {
+  try {
+    const pr = await db.collection('config').doc('prPage').get();
+    if (pr.exists) _prItems = pr.data().items || [];
+    const al = await db.collection('config').doc('photosPage').get();
+    if (al.exists) _albumLinks = al.data().links || [];
+  } catch(e) {}
+  renderPrItems();
+  renderAlbumLinks();
+  renderPrPage();
+  renderPhotosPage();
+}
+
+function renderPrItems() {
+  const el = document.getElementById('pr-items-list');
+  if (!el) return;
+  if (!_prItems.length) { el.innerHTML = '<div style="color:#aaa;font-size:0.8rem;text-align:center;padding:0.5rem">ยังไม่มีประกาศ</div>'; return; }
+  el.innerHTML = _prItems.map((item, i) => `
+    <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:0.6rem;margin-bottom:0.4rem">
+      <input value="${escHtml(item.date||'')}" placeholder="วันที่ เช่น 1 มิถุนายน 2567"
+        oninput="_prItems[${i}].date=this.value"
+        style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:0.35rem 0.5rem;font-family:var(--font);font-size:0.78rem;margin-bottom:0.3rem;outline:none">
+      <input value="${escHtml(item.title||'')}" placeholder="หัวข้อประกาศ"
+        oninput="_prItems[${i}].title=this.value"
+        style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:0.35rem 0.5rem;font-family:var(--font);font-size:0.82rem;margin-bottom:0.3rem;outline:none;font-weight:600">
+      <textarea placeholder="เนื้อหาประกาศ" rows="2"
+        oninput="_prItems[${i}].body=this.value"
+        style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:0.35rem 0.5rem;font-family:var(--font);font-size:0.8rem;resize:vertical;outline:none">${escHtml(item.body||'')}</textarea>
+      <button onclick="_prItems.splice(${i},1);renderPrItems()" style="font-size:0.72rem;color:#d60000;background:none;border:none;cursor:pointer;padding:0">🗑 ลบ</button>
+    </div>`).join('');
+}
+
+function addPrItem() {
+  _prItems.unshift({ date:'', title:'', body:'' });
+  renderPrItems();
+}
+
+async function savePrItems() {
+  try {
+    await db.collection('config').doc('prPage').set({ items: _prItems });
+    renderPrPage();
+    document.getElementById('pr-save-status').textContent = '✓ บันทึกแล้ว';
+    showToast('บันทึกประชาสัมพันธ์แล้ว ✓');
+  } catch(e) { document.getElementById('pr-save-status').textContent = 'เกิดข้อผิดพลาด: '+e.message; }
+}
+
+function renderAlbumLinks() {
+  const el = document.getElementById('album-links-list');
+  if (!el) return;
+  if (!_albumLinks.length) { el.innerHTML = '<div style="color:#aaa;font-size:0.8rem;text-align:center;padding:0.5rem">ยังไม่มีลิงค์</div>'; return; }
+  el.innerHTML = _albumLinks.map((link, i) => `
+    <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:0.6rem;margin-bottom:0.4rem">
+      <input value="${escHtml(link.label||'')}" placeholder="ชื่ออัลบั้ม เช่น งานรวมรุ่น 2567"
+        oninput="_albumLinks[${i}].label=this.value"
+        style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:0.35rem 0.5rem;font-family:var(--font);font-size:0.82rem;margin-bottom:0.3rem;outline:none;font-weight:600">
+      <input value="${escHtml(link.url||'')}" placeholder="URL ลิงค์ภาพถ่าย"
+        oninput="_albumLinks[${i}].url=this.value"
+        style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:0.35rem 0.5rem;font-family:var(--font);font-size:0.78rem;outline:none">
+      <button onclick="_albumLinks.splice(${i},1);renderAlbumLinks()" style="font-size:0.72rem;color:#d60000;background:none;border:none;cursor:pointer;padding:0;margin-top:0.25rem">🗑 ลบ</button>
+    </div>`).join('');
+}
+
+function addAlbumLink() {
+  _albumLinks.push({ label:'', url:'' });
+  renderAlbumLinks();
+}
+
+async function saveAlbumLinks() {
+  try {
+    await db.collection('config').doc('photosPage').set({ links: _albumLinks });
+    renderPhotosPage();
+    document.getElementById('album-save-status').textContent = '✓ บันทึกแล้ว';
+    showToast('บันทึกลิงค์ภาพถ่ายแล้ว ✓');
+  } catch(e) { document.getElementById('album-save-status').textContent = 'เกิดข้อผิดพลาด: '+e.message; }
+}
+
+function renderPrPage() {
+  const el = document.getElementById('page-pr');
+  if (!el) return;
+  if (!_prItems.length) {
+    el.innerHTML = '<div class="page-section-title">ประชาสัมพันธ์</div><div style="text-align:center;color:#aaa;padding:2rem;font-size:0.9rem">ยังไม่มีประกาศ</div>';
+    return;
+  }
+  el.innerHTML = '<div class="page-section-title">ประชาสัมพันธ์</div>' +
+    _prItems.map(item => `
+      <div class="pr-card">
+        ${item.date ? `<div class="pr-date">${escHtml(item.date)}</div>` : ''}
+        ${item.title ? `<div class="pr-title">${escHtml(item.title)}</div>` : ''}
+        ${item.body ? `<div class="pr-body">${escHtml(item.body).replace(/\n/g,'<br>')}</div>` : ''}
+      </div>`).join('');
+}
+
+function renderPhotosPage() {
+  const el = document.getElementById('page-photos');
+  if (!el) return;
+  if (!_albumLinks.length) {
+    el.innerHTML = '<div class="page-section-title">ภาพถ่าย</div><div style="text-align:center;color:#aaa;padding:2rem;font-size:0.9rem">ยังไม่มีอัลบั้ม</div>';
+    return;
+  }
+  el.innerHTML = '<div class="page-section-title">ภาพถ่าย</div>' +
+    _albumLinks.map(link => `
+      <a href="${encodeURI(link.url||'#')}" target="_blank" rel="noopener"
+        style="display:flex;align-items:center;gap:0.75rem;background:#fff;border-radius:12px;padding:0.85rem 1rem;margin-bottom:0.6rem;box-shadow:0 1px 4px rgba(0,0,0,0.07);text-decoration:none;color:#1a1a2e">
+        <span style="font-size:1.5rem">📷</span>
+        <span style="font-weight:600;font-size:0.9rem;flex:1">${escHtml(link.label||link.url)}</span>
+        <span style="color:#aaa;font-size:0.8rem">→</span>
+      </a>`).join('');
 }
 
 // ═══ CHAT ═══
