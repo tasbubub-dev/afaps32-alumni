@@ -226,11 +226,12 @@ body {
   animation:slideUp 0.3s ease;
 }
 @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
-.modal-handle { width:40px; height:4px; background:#ddd; border-radius:2px; margin:6px auto 4px; }
-.modal-photo { width:min(32vw,120px); height:min(32vw,120px); border-radius:14px; object-fit:cover; display:block; margin:0 auto 0.35rem; border:3px solid var(--theme); background:var(--theme-light); }
-.modal-photo-fb { width:min(32vw,120px); height:min(32vw,120px); border-radius:14px; display:flex; align-items:center; justify-content:center; margin:0 auto 0.35rem; border:3px solid var(--theme); background:var(--theme-light); font-size:3rem; color:var(--theme); }
+.modal-handle { position:absolute; top:10px; left:50%; transform:translateX(-50%); width:40px; height:4px; background:rgba(255,255,255,0.85); border-radius:2px; z-index:2; }
+#detail-photo-wrap { position:relative; }
+.modal-photo { width:100%; aspect-ratio:1/1; max-height:48vh; object-fit:cover; display:block; border-radius:20px 20px 0 0; border:none; margin:0; background:var(--theme-light); }
+.modal-photo-fb { width:100%; aspect-ratio:1/1; max-height:48vh; border-radius:20px 20px 0 0; display:flex; align-items:center; justify-content:center; border:none; margin:0; background:var(--theme-light); font-size:6rem; color:var(--theme); }
 .modal-name { text-align:center; font-size:1.15rem; font-weight:700; color:#1a1a2e; }
-.modal-rank-badge { display:block; text-align:center; font-size:0.88rem; color:var(--theme); font-weight:700; margin:3px 0 2px; letter-spacing:0.3px; }
+.modal-rank-badge { display:block; text-align:center; font-size:0.88rem; color:var(--theme); font-weight:700; margin:0.5rem 0 2px; letter-spacing:0.3px; }
 .modal-nick { text-align:center; font-size:0.88rem; color:#888; margin-bottom:0.35rem; }
 .modal-divider { height:1px; background:#f0f0f0; margin:0 1rem 0.3rem; }
 .modal-rows { padding:0 1rem; }
@@ -846,7 +847,6 @@ function doGet(e) {
 <!-- Member Detail Modal -->
 <div class="modal-overlay" id="detail-modal" onclick="closeDetailIfOutside(event)">
   <div class="modal-sheet" id="detail-sheet">
-    <div class="modal-handle"></div>
     <div id="detail-photo-wrap"></div>
     <span class="modal-rank-badge" id="detail-rank"></span>
     <div class="modal-name" id="detail-name"></div>
@@ -1400,9 +1400,10 @@ function openDetail(id) {
   sheet.style.setProperty('--theme-light', bt.light);
 
   const photoWrap = document.getElementById('detail-photo-wrap');
-  photoWrap.innerHTML = m.photoUrl
+  const handleEl = '<div class="modal-handle"></div>';
+  photoWrap.innerHTML = handleEl + (m.photoUrl
     ? `<img class="modal-photo" src="${m.photoUrl}" alt="${escHtml(m.fullname)}" onerror="this.outerHTML='<div class=\\'modal-photo-fb\\'>👤</div>'">`
-    : `<div class="modal-photo-fb">👤</div>`;
+    : `<div class="modal-photo-fb">👤</div>`);
 
   document.getElementById('detail-name').textContent = m.fullname;
   document.getElementById('detail-rank').textContent = m.rank;
