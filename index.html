@@ -1150,67 +1150,45 @@ async function doLogout() {
 // ═══ LOAD MEMBERS + OVERRIDES ═══
 async function loadMembers() {
   try {
-    // โหลด Firestore overrides (merged ทั้งสองแหล่ง)
+    // โหลด Firebase overrides (รูปภาพ + การแก้ไขผ่านแอป) ควบคู่กับ Sheet
     let overrides = {};
     try {
       const snap = await db.collection('memberOverrides').get();
       snap.forEach(doc => { overrides[doc.id] = doc.data(); });
     } catch(fe) { console.warn('memberOverrides ไม่พร้อม:', fe.message); }
 
-    // ลองโหลดจาก Firebase members collection ก่อน
-    let firebaseMembers = null;
-    try {
-      const testSnap = await db.collection('members').limit(1).get();
-      if (!testSnap.empty) {
-        const allSnap = await db.collection('members').get();
-        firebaseMembers = [];
-        allSnap.forEach(doc => firebaseMembers.push(doc.data()));
-      }
-    } catch(fe) { console.warn('Firebase members ไม่พร้อม:', fe.message); }
+    // โหลดข้อมูลหลักจาก Sheet CSV เสมอ — ข้อมูลล่าสุดเสมอ ไม่มีปัญหา stale
+    const res  = await fetch(SHEETS_CSV_URL);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if (rows.length < 2) { showEmptyState('ไม่พบข้อมูลใน Sheet'); return; }
 
-    if (firebaseMembers && firebaseMembers.length > 0) {
-      // ใช้ Firebase เป็นแหล่งหลัก
-      allMembers = firebaseMembers
-        .filter(m => m.fullname)
-        .map(m => {
-          const ov = overrides[m.id];
-          return ov ? { ...m, ...ov } : m;
-        })
-        .sort((a, b) => (Number(a.id)||0) - (Number(b.id)||0));
-    } else {
-      // Fall back: โหลดจาก Google Sheets
-      const res  = await fetch(SHEETS_CSV_URL);
-      const text = await res.text();
-      const rows = parseCSV(text);
-      if (rows.length < 2) { showEmptyState('ไม่พบข้อมูลใน Sheet'); return; }
+    const header = rows[0].map(h => (h||'').trim().toLowerCase());
+    birthdayColIdx = header.findIndex(h => h.includes('เกิด') || h.includes('birthday') || h.includes('birth'));
 
-      const header = rows[0].map(h => (h||'').trim().toLowerCase());
-      birthdayColIdx = header.findIndex(h => h.includes('เกิด') || h.includes('birthday') || h.includes('birth'));
-
-      allMembers = rows.slice(1)
-        .filter(r => r[COL.fullname] && r[COL.fullname].trim())
-        .map((r, i) => {
-          const seq = r[COL.seq] || String(i+1);
-          const base = {
-            id:       seq,
-            photoUrl: driveToImg(r[COL.photo]),
-            rank:     r[COL.rank]     || '',
-            fullname: r[COL.fullname] || '',
-            nickname: r[COL.nickname] || '',
-            position: r[COL.position] || '',
-            unit:     r[COL.unit]     || '',
-            phone1:   r[COL.phone1]   || '',
-            phone2:   r[COL.phone2]   || '',
-            level:    r[COL.level]    || '',
-            shirt:    r[COL.shirt]    || '',
-            email:    r[COL.email]    || '',
-            birthday: (birthdayColIdx >= 0 ? r[birthdayColIdx] : '') || ''
-          };
-          base.branch = detectBranch(base.rank);
-          const ov = overrides[seq];
-          return ov ? { ...base, ...ov } : base;
-        });
-    }
+    allMembers = rows.slice(1)
+      .filter(r => r[COL.fullname] && r[COL.fullname].trim())
+      .map((r, i) => {
+        const seq = r[COL.seq] || String(i+1);
+        const base = {
+          id:       seq,
+          photoUrl: driveToImg(r[COL.photo]),
+          rank:     r[COL.rank]     || '',
+          fullname: r[COL.fullname] || '',
+          nickname: r[COL.nickname] || '',
+          position: r[COL.position] || '',
+          unit:     r[COL.unit]     || '',
+          phone1:   r[COL.phone1]   || '',
+          phone2:   r[COL.phone2]   || '',
+          level:    r[COL.level]    || '',
+          shirt:    r[COL.shirt]    || '',
+          email:    r[COL.email]    || '',
+          birthday: (birthdayColIdx >= 0 ? r[birthdayColIdx] : '') || ''
+        };
+        base.branch = detectBranch(base.rank);
+        const ov = overrides[seq];
+        return ov ? { ...base, ...ov } : base;
+      });
 
     populateUnitFilter();
     filterAndRender();
