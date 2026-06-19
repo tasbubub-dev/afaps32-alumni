@@ -226,23 +226,25 @@ body {
   animation:slideUp 0.3s ease;
 }
 @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
-.modal-handle { width:40px; height:4px; background:#ddd; border-radius:2px; margin:8px auto 6px; }
-.modal-photo { width:min(45vw,180px); height:min(45vw,180px); border-radius:16px; object-fit:cover; display:block; margin:0 auto 0.5rem; border:3px solid var(--theme); background:var(--theme-light); }
-.modal-photo-fb { width:min(45vw,180px); height:min(45vw,180px); border-radius:16px; display:flex; align-items:center; justify-content:center; margin:0 auto 0.5rem; border:3px solid var(--theme); background:var(--theme-light); font-size:4rem; color:var(--theme); }
-.modal-name { text-align:center; font-size:1rem; font-weight:700; color:#1a1a2e; }
-.modal-rank-badge { display:block; text-align:center; font-size:0.78rem; color:var(--theme); font-weight:700; margin:4px 0 2px; letter-spacing:0.3px; }
-.modal-nick { text-align:center; font-size:0.8rem; color:#888; margin-bottom:0.5rem; }
-.modal-divider { height:1px; background:#f0f0f0; margin:0 1rem 0.4rem; }
+.modal-handle { width:40px; height:4px; background:#ddd; border-radius:2px; margin:6px auto 4px; }
+.modal-photo { width:min(32vw,120px); height:min(32vw,120px); border-radius:14px; object-fit:cover; display:block; margin:0 auto 0.35rem; border:3px solid var(--theme); background:var(--theme-light); }
+.modal-photo-fb { width:min(32vw,120px); height:min(32vw,120px); border-radius:14px; display:flex; align-items:center; justify-content:center; margin:0 auto 0.35rem; border:3px solid var(--theme); background:var(--theme-light); font-size:3rem; color:var(--theme); }
+.modal-name { text-align:center; font-size:1.15rem; font-weight:700; color:#1a1a2e; }
+.modal-rank-badge { display:block; text-align:center; font-size:0.88rem; color:var(--theme); font-weight:700; margin:3px 0 2px; letter-spacing:0.3px; }
+.modal-nick { text-align:center; font-size:0.88rem; color:#888; margin-bottom:0.35rem; }
+.modal-divider { height:1px; background:#f0f0f0; margin:0 1rem 0.3rem; }
 .modal-rows { padding:0 1rem; }
 .modal-row {
   display:flex; align-items:center; gap:0.6rem;
-  padding:0.3rem 0; border-bottom:1px solid #f5f5f5; font-size:0.82rem;
+  padding:0.28rem 0; border-bottom:1px solid #f5f5f5;
 }
 .modal-row:last-child { border-bottom:none; }
 .modal-row-icon { width:26px; height:26px; border-radius:7px; background:var(--theme-light); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .modal-row-icon svg { width:13px; height:13px; color:var(--theme); }
-.modal-row-label { font-size:0.68rem; color:#aaa; margin-bottom:0; }
-.modal-row-val { color:#1a1a2e; font-weight:500; font-size:0.82rem; }
+.modal-row-content { display:flex; align-items:baseline; gap:0.35rem; flex-wrap:wrap; }
+.modal-row-label { font-size:0.78rem; color:#aaa; white-space:nowrap; }
+.modal-row-label::after { content:':'; }
+.modal-row-val { color:#1a1a2e; font-weight:600; font-size:0.95rem; }
 
 /* ── PHONE CALL ROW (large) ── */
 .phone-call-row {
@@ -1412,9 +1414,9 @@ function openDetail(id) {
       rowsHtml += `
         <div class="phone-call-row">
           <div class="modal-row-icon">${phoneIcon}</div>
-          <div style="flex:1">
-            <div class="modal-row-label">${p.label}</div>
-            <div class="phone-number-large">${escHtml(p.val)}</div>
+          <div class="modal-row-content" style="flex:1">
+            <span class="modal-row-label">${p.label}</span>
+            <span class="phone-number-large">${escHtml(p.val)}</span>
           </div>
           <a href="tel:${encodeURIComponent(p.val)}" class="btn-call" onclick="event.stopPropagation()">${callSvg}</a>
         </div>`;
@@ -1424,9 +1426,9 @@ function openDetail(id) {
   rowsHtml += `
     <div class="modal-row">
       <div class="modal-row-icon">${birthdayIcon}</div>
-      <div>
-        <div class="modal-row-label">วัน/เดือน/ปีเกิด</div>
-        <div class="modal-row-val">${m.birthday ? escHtml(m.birthday) : '<span style="color:#ccc">ยังไม่ระบุ</span>'}</div>
+      <div class="modal-row-content">
+        <span class="modal-row-label">วัน/เดือน/ปีเกิด</span>
+        <span class="modal-row-val">${m.birthday ? escHtml(m.birthday) : '<span style="color:#ccc">ยังไม่ระบุ</span>'}</span>
       </div>
     </div>`;
 
@@ -1441,9 +1443,9 @@ function openDetail(id) {
   rowsHtml += infoRows.map(r => `
     <div class="modal-row" ${r.link ? `onclick="window.location='${r.link}'"` : ''} style="${r.link?'cursor:pointer':''}">
       <div class="modal-row-icon">${r.icon}</div>
-      <div>
-        <div class="modal-row-label">${r.label}</div>
-        <div class="modal-row-val">${escHtml(r.val)}</div>
+      <div class="modal-row-content">
+        <span class="modal-row-label">${r.label}</span>
+        <span class="modal-row-val">${escHtml(r.val)}</span>
       </div>
     </div>`).join('');
 
