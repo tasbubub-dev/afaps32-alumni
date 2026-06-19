@@ -1063,6 +1063,7 @@ auth.onAuthStateChanged(user => {
     loadUserProfile();
     loadMembers();
     loadAppsScriptConfig();
+    loadContentConfig();
   } else {
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
