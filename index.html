@@ -2229,18 +2229,37 @@ async function saveAlbumLinks() {
   } catch(e) { document.getElementById('album-save-status').textContent = 'เกิดข้อผิดพลาด: '+e.message; }
 }
 
+const THAI_MONTHS = {
+  'มกราคม':1,'กุมภาพันธ์':2,'มีนาคม':3,'เมษายน':4,
+  'พฤษภาคม':5,'มิถุนายน':6,'กรกฎาคม':7,'สิงหาคม':8,
+  'กันยายน':9,'ตุลาคม':10,'พฤศจิกายน':11,'ธันวาคม':12
+};
+
+function parseBirthdayDayMonth(bStr) {
+  if (!bStr) return null;
+  const b = bStr.trim();
+  // รูปแบบ DD/MM/YYYY หรือ D/M/YYYY
+  const slash = b.split('/');
+  if (slash.length >= 2) {
+    const d = parseInt(slash[0], 10), m = parseInt(slash[1], 10);
+    if (d > 0 && m > 0 && m <= 12) return { d, m };
+  }
+  // รูปแบบ "15 มีนาคม 2510" หรือ "15 มีนาคม"
+  for (const [name, num] of Object.entries(THAI_MONTHS)) {
+    if (b.includes(name)) {
+      const dayMatch = b.match(/(\d{1,2})/);
+      if (dayMatch) return { d: parseInt(dayMatch[1], 10), m: num };
+    }
+  }
+  return null;
+}
+
 function getTodayBirthdays() {
   const now = new Date();
-  const dd = now.getDate();
-  const mm = now.getMonth() + 1;
+  const dd = now.getDate(), mm = now.getMonth() + 1;
   return allMembers.filter(m => {
-    if (!m.birthday) return false;
-    // รองรับรูปแบบ DD/MM/YYYY หรือ D/M/YYYY
-    const parts = m.birthday.trim().split('/');
-    if (parts.length >= 2) {
-      return parseInt(parts[0], 10) === dd && parseInt(parts[1], 10) === mm;
-    }
-    return false;
+    const parsed = parseBirthdayDayMonth(m.birthday);
+    return parsed && parsed.d === dd && parsed.m === mm;
   });
 }
 
