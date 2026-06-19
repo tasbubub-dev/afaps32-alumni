@@ -1064,6 +1064,11 @@ auth.onAuthStateChanged(user => {
     currentUser = user;
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
+    // แสดง admin tab ทันทีถ้าเป็น hardcoded admin (ก่อน async โหลด)
+    if (ADMIN_EMAILS.includes(user.email)) {
+      document.getElementById('tab-admin').style.display = 'flex';
+      if (!currentUserProfile) currentUserProfile = { role: 'admin', email: user.email };
+    }
     loadUserProfile();
     loadMembers();
     loadAppsScriptConfig();
