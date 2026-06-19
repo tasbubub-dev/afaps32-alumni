@@ -1025,7 +1025,7 @@ function showToast(msg) {
 }
 
 // ═══ ROLES ═══
-const ADMIN_EMAILS = ['tasbubub@gmail.com'];
+const ADMIN_EMAILS = ['tasbubub@gmail.com', '0899996545@tat32.app'];
 function getUserRole() { return currentUserProfile?.role || 'member'; }
 function isAdmin() {
   if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) return true;
@@ -1337,7 +1337,7 @@ function filterAndRender() {
   filteredMembers = allMembers.filter(m => {
     const branchOk = currentBranch === 'all' || m.branch === currentBranch;
     const unitOk   = unit === 'all' || m.unit === unit;
-    const searchOk = !q || [m.rank, m.fullname, m.nickname, m.position, m.unit]
+    const searchOk = !q || [m.rank, m.fullname, m.nickname, m.position, m.unit, m.birthday]
       .some(s => (s||'').toLowerCase().includes(q));
     return branchOk && unitOk && searchOk;
   });
