@@ -543,11 +543,11 @@ body {
     </div>
     <!-- Filter Chips -->
     <div class="filter-row" id="filter-row">
-      <button class="chip active" data-branch="all">ทั้งหมด</button>
-      <button class="chip" data-branch="ตร">ตร.</button>
-      <button class="chip" data-branch="ทบ">ทบ.</button>
-      <button class="chip" data-branch="ทอ">ทอ.</button>
-      <button class="chip" data-branch="ทร">ทร.</button>
+      <button class="chip" data-branch="all" style="display:none">ทั้งหมด</button>
+      <button class="chip active" data-branch="ตร">ตร.</button>
+      <button class="chip" data-branch="ทบ" style="display:none">ทบ.</button>
+      <button class="chip" data-branch="ทอ" style="display:none">ทอ.</button>
+      <button class="chip" data-branch="ทร" style="display:none">ทร.</button>
     </div>
   </div>
 
@@ -942,7 +942,7 @@ const db   = firebase.firestore();
 // ═══ STATE ═══
 let allMembers = [];
 let filteredMembers = [];
-let currentBranch = 'all';
+let currentBranch = 'ตร';
 let currentUser = null;
 let currentUserProfile = null;
 let currentEditField = null;
