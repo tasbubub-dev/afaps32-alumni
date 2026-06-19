@@ -280,6 +280,8 @@ body {
 .pr-date { font-size:0.72rem; color:#aaa; margin-bottom:0.25rem; }
 .pr-title { font-weight:600; font-size:0.9rem; margin-bottom:0.4rem; color:#1a1a2e; }
 .pr-body { font-size:0.82rem; color:#555; line-height:1.6; }
+.pr-card-birthday { background:linear-gradient(135deg,#fff8e1,#fff3e0); border:1.5px solid #ffc107; }
+.pr-birthday-names { font-size:0.9rem; color:#5d4037; font-weight:600; line-height:1.7; }
 
 /* ── PHOTOS ── */
 .photos-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; }
@@ -1502,6 +1504,7 @@ function switchTab(tab) {
   } else if (tab === 'pr') {
     showSimpleHeader('ประชาสัมพันธ์');
     show('page-pr');
+    renderPrPage();
   } else if (tab === 'photos') {
     showSimpleHeader('ภาพถ่าย');
     show('page-photos');
@@ -2226,20 +2229,52 @@ async function saveAlbumLinks() {
   } catch(e) { document.getElementById('album-save-status').textContent = 'เกิดข้อผิดพลาด: '+e.message; }
 }
 
+function getTodayBirthdays() {
+  const now = new Date();
+  const dd = now.getDate();
+  const mm = now.getMonth() + 1;
+  return allMembers.filter(m => {
+    if (!m.birthday) return false;
+    // รองรับรูปแบบ DD/MM/YYYY หรือ D/M/YYYY
+    const parts = m.birthday.trim().split('/');
+    if (parts.length >= 2) {
+      return parseInt(parts[0], 10) === dd && parseInt(parts[1], 10) === mm;
+    }
+    return false;
+  });
+}
+
 function renderPrPage() {
   const el = document.getElementById('page-pr');
   if (!el) return;
-  if (!_prItems.length) {
-    el.innerHTML = '<div class="page-section-title">ประชาสัมพันธ์</div><div style="text-align:center;color:#aaa;padding:2rem;font-size:0.9rem">ยังไม่มีประกาศ</div>';
-    return;
+
+  // Birthday card อัตโนมัติ
+  const bdays = getTodayBirthdays();
+  let birthdayHtml = '';
+  if (bdays.length > 0) {
+    const todayStr = new Date().toLocaleDateString('th-TH', { day:'numeric', month:'long', year:'numeric' });
+    const nameList = bdays.map(m => {
+      const nick = m.nickname ? ` "${escHtml(m.nickname)}"` : '';
+      return `• ${escHtml(m.rank)} ${escHtml(m.fullname)}${nick}`;
+    }).join('<br>');
+    birthdayHtml = `
+      <div class="pr-card pr-card-birthday">
+        <div class="pr-date">🎂 วันเกิดวันนี้ · ${todayStr}</div>
+        <div class="pr-title">ขอแสดงความยินดีกับผู้ที่เกิดวันนี้</div>
+        <div class="pr-birthday-names">${nameList}</div>
+      </div>`;
   }
-  el.innerHTML = '<div class="page-section-title">ประชาสัมพันธ์</div>' +
-    _prItems.map(item => `
-      <div class="pr-card">
-        ${item.date ? `<div class="pr-date">${escHtml(item.date)}</div>` : ''}
-        ${item.title ? `<div class="pr-title">${escHtml(item.title)}</div>` : ''}
-        ${item.body ? `<div class="pr-body">${escHtml(item.body).replace(/\n/g,'<br>')}</div>` : ''}
-      </div>`).join('');
+
+  const prHtml = _prItems.length
+    ? _prItems.map(item => `
+        <div class="pr-card">
+          ${item.date  ? `<div class="pr-date">${escHtml(item.date)}</div>`  : ''}
+          ${item.title ? `<div class="pr-title">${escHtml(item.title)}</div>` : ''}
+          ${item.body  ? `<div class="pr-body">${escHtml(item.body).replace(/\n/g,'<br>')}</div>` : ''}
+        </div>`).join('')
+    : '<div style="text-align:center;color:#aaa;padding:2rem;font-size:0.9rem">ยังไม่มีประกาศ</div>';
+
+  el.innerHTML = '<div class="page-section-title">ประชาสัมพันธ์</div>' + birthdayHtml + prHtml;
 }
 
 function renderPhotosPage() {
