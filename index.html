@@ -1198,6 +1198,8 @@ async function loadMembers() {
       });
 
     populateUnitFilter();
+    applyTheme(currentBranch);
+    updateHeaderSub(currentBranch);
     filterAndRender();
     await checkAutoLink();
   } catch(e) {
