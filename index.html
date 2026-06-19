@@ -1542,34 +1542,44 @@ async function loadUserProfile() {
   if (!currentUser) return;
   const isHardcodedAdmin = ADMIN_EMAILS.includes(currentUser.email);
 
-  // แสดง admin tab ทันที (ก่อน Firestore โหลด) ถ้าเป็น hardcoded admin
+  // แสดง admin tab ทันที และตั้ง fallback profile ก่อนโหลด Firestore
   if (isHardcodedAdmin) {
+    if (!currentUserProfile) currentUserProfile = { role: 'admin', email: currentUser.email };
     document.getElementById('tab-admin').style.display = 'flex';
   }
 
-  const doc = await db.collection('userProfiles').doc(currentUser.uid).get();
-  if (doc.exists) {
-    currentUserProfile = doc.data();
-    // บังคับ role='admin' สำหรับ hardcoded admin
-    if (isHardcodedAdmin && currentUserProfile.role !== 'admin') {
-      currentUserProfile.role = 'admin';
-      try { await db.collection('userProfiles').doc(currentUser.uid).update({ role: 'admin' }); } catch(_) {}
+  try {
+    const doc = await db.collection('userProfiles').doc(currentUser.uid).get();
+    if (doc.exists) {
+      currentUserProfile = doc.data();
+      // บังคับ role='admin' สำหรับ hardcoded admin
+      if (isHardcodedAdmin && currentUserProfile.role !== 'admin') {
+        currentUserProfile.role = 'admin';
+        try { await db.collection('userProfiles').doc(currentUser.uid).update({ role: 'admin' }); } catch(_) {}
+      }
+    } else {
+      // ผู้ใช้ใหม่ — ตรวจ pendingRoles ก่อน
+      let pendingRole = isHardcodedAdmin ? 'admin' : 'member';
+      try {
+        const pr = await db.collection('pendingRoles').doc(currentUser.email.toLowerCase()).get();
+        if (pr.exists && pr.data().role) { pendingRole = pr.data().role; }
+      } catch(_) {}
+      currentUserProfile = {
+        displayName: currentUser.displayName || '',
+        email: currentUser.email || '',
+        phone1:'', phone2:'', nickname:'', shirtSize:'', rank:'', photoURL:'',
+        role: pendingRole
+      };
+      try { await db.collection('userProfiles').doc(currentUser.uid).set(currentUserProfile); } catch(_) {}
     }
-  } else {
-    // ผู้ใช้ใหม่ — ตรวจ pendingRoles ก่อน
-    let pendingRole = isHardcodedAdmin ? 'admin' : 'member';
-    try {
-      const pr = await db.collection('pendingRoles').doc(currentUser.email.toLowerCase()).get();
-      if (pr.exists && pr.data().role) { pendingRole = pr.data().role; }
-    } catch(_) {}
-    currentUserProfile = {
-      displayName: currentUser.displayName || '',
-      email: currentUser.email || '',
-      phone1:'', phone2:'', nickname:'', shirtSize:'', rank:'', photoURL:'',
-      role: pendingRole
-    };
-    try { await db.collection('userProfiles').doc(currentUser.uid).set(currentUserProfile); } catch(_) {}
+  } catch(e) {
+    console.warn('loadUserProfile Firestore error:', e.message);
+    // fallback: hardcoded admin ยังคงเป็น admin แม้ Firestore ไม่ตอบ
+    if (isHardcodedAdmin && !currentUserProfile) {
+      currentUserProfile = { role: 'admin', email: currentUser.email };
+    }
   }
+
   document.getElementById('tab-admin').style.display = isAdmin() ? 'flex' : 'none';
   updateAccountBtn();
   await checkAutoLink();
