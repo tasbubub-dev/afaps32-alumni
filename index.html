@@ -284,6 +284,14 @@ body {
 .pr-body { font-size:0.82rem; color:#555; line-height:1.6; }
 .pr-card-birthday { background:linear-gradient(135deg,#fff8e1,#fff3e0); border:1.5px solid #ffc107; }
 .pr-birthday-names { font-size:0.9rem; color:#5d4037; font-weight:600; line-height:1.7; }
+/* PR card images */
+.pr-images { margin-top:0.6rem; border-radius:8px; overflow:hidden; }
+.pr-img-1 img { width:100%; max-height:260px; object-fit:cover; display:block; }
+.pr-img-2 { display:grid; grid-template-columns:1fr 1fr; gap:2px; }
+.pr-img-2 img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; }
+.pr-img-3 { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:2px; height:200px; }
+.pr-img-3 .pr-img3-left { grid-row:1/3; overflow:hidden; }
+.pr-img-3 img { width:100%; height:100%; object-fit:cover; display:block; }
 
 /* ── PHOTOS ── */
 .photos-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; }
@@ -2176,7 +2184,19 @@ function renderPrItems() {
   const el = document.getElementById('pr-items-list');
   if (!el) return;
   if (!_prItems.length) { el.innerHTML = '<div style="color:#aaa;font-size:0.8rem;text-align:center;padding:0.5rem">ยังไม่มีประกาศ</div>'; return; }
-  el.innerHTML = _prItems.map((item, i) => `
+  el.innerHTML = _prItems.map((item, i) => {
+    const imgs = item.images || [];
+    const thumbs = imgs.map((src, j) => `
+      <div style="position:relative;width:52px;height:52px;border-radius:6px;overflow:hidden;flex-shrink:0">
+        <img src="${src}" style="width:100%;height:100%;object-fit:cover">
+        <button onclick="_prItems[${i}].images.splice(${j},1);renderPrItems()" style="position:absolute;top:0;right:0;background:rgba(0,0,0,0.55);color:#fff;border:none;cursor:pointer;font-size:11px;line-height:1;padding:2px 4px;border-radius:0 0 0 4px">✕</button>
+      </div>`).join('');
+    const addBtn = imgs.length < 3 ? `
+      <label style="width:52px;height:52px;border:1.5px dashed #aac4f0;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#f0f6ff;flex-shrink:0">
+        <span style="font-size:1.4rem;color:#aac4f0;line-height:1">+</span>
+        <input type="file" accept="image/*" style="display:none" onchange="addPrItemImage(event,${i})">
+      </label>` : '';
+    return `
     <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:0.6rem;margin-bottom:0.4rem">
       <input value="${escHtml(item.date||'')}" placeholder="วันที่ เช่น 1 มิถุนายน 2567"
         oninput="_prItems[${i}].date=this.value"
@@ -2187,13 +2207,39 @@ function renderPrItems() {
       <textarea placeholder="เนื้อหาประกาศ" rows="2"
         oninput="_prItems[${i}].body=this.value"
         style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:0.35rem 0.5rem;font-family:var(--font);font-size:0.8rem;resize:vertical;outline:none">${escHtml(item.body||'')}</textarea>
-      <button onclick="_prItems.splice(${i},1);renderPrItems()" style="font-size:0.72rem;color:#d60000;background:none;border:none;cursor:pointer;padding:0">🗑 ลบ</button>
-    </div>`).join('');
+      <div style="display:flex;gap:6px;align-items:center;margin-top:0.4rem;flex-wrap:wrap">
+        ${thumbs}${addBtn}
+        <span style="font-size:0.7rem;color:#aaa">${imgs.length}/3 รูป</span>
+      </div>
+      <button onclick="_prItems.splice(${i},1);renderPrItems()" style="font-size:0.72rem;color:#d60000;background:none;border:none;cursor:pointer;padding:0;margin-top:0.35rem">🗑 ลบประกาศ</button>
+    </div>`;
+  }).join('');
 }
 
 function addPrItem() {
-  _prItems.unshift({ date:'', title:'', body:'' });
+  _prItems.unshift({ date:'', title:'', body:'', images:[] });
   renderPrItems();
+}
+
+async function addPrItemImage(event, i) {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  if (!_prItems[i].images) _prItems[i].images = [];
+  if (_prItems[i].images.length >= 3) return;
+  showToast('กำลังโหลดรูป...');
+  const dataUrl = await compressImage(file, 1200, 0.82);
+  _prItems[i].images.push(dataUrl);
+  renderPrItems();
+}
+
+function renderPrImages(images) {
+  if (!images || !images.length) return '';
+  const n = Math.min(images.length, 3);
+  const img = (src) => `<img src="${src}" loading="lazy">`;
+  if (n === 1) return `<div class="pr-images pr-img-1">${img(images[0])}</div>`;
+  if (n === 2) return `<div class="pr-images pr-img-2">${img(images[0])}${img(images[1])}</div>`;
+  return `<div class="pr-images pr-img-3"><div class="pr-img3-left">${img(images[0])}</div>${img(images[1])}${img(images[2])}</div>`;
 }
 
 async function savePrItems() {
@@ -2296,6 +2342,7 @@ function renderPrPage() {
           ${item.date  ? `<div class="pr-date">${escHtml(item.date)}</div>`  : ''}
           ${item.title ? `<div class="pr-title">${escHtml(item.title)}</div>` : ''}
           ${item.body  ? `<div class="pr-body">${escHtml(item.body).replace(/\n/g,'<br>')}</div>` : ''}
+          ${renderPrImages(item.images)}
         </div>`).join('')
     : '<div style="text-align:center;color:#aaa;padding:2rem;font-size:0.9rem">ยังไม่มีประกาศ</div>';
 
