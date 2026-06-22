@@ -2187,8 +2187,15 @@ let _albumLinks = [];
 
 async function loadContentConfig() {
   try {
-    const pr = await db.collection('config').doc('prPage').get();
-    if (pr.exists) _prItems = pr.data().items || [];
+    // โหลดจาก collection ใหม่ก่อน (แต่ละ doc = 1 ประกาศ)
+    const snap = await db.collection('prItems').orderBy('order').get();
+    if (!snap.empty) {
+      _prItems = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+    } else {
+      // fallback: โหลดจาก doc เดิม
+      const pr = await db.collection('config').doc('prPage').get();
+      if (pr.exists) _prItems = (pr.data().items || []).map(item => ({ ...item, _docId: null }));
+    }
     const al = await db.collection('config').doc('photosPage').get();
     if (al.exists) _albumLinks = al.data().links || [];
   } catch(e) {}
@@ -2335,21 +2342,44 @@ async function savePrItems() {
   const statusEl = document.getElementById('pr-save-status');
   statusEl.textContent = 'กำลังบันทึก...';
   try {
-    // ย้ายรูป base64 เก่าขึ้น Storage ก่อน (ถ้ามี)
-    for (const item of _prItems) {
-      if (!item.images) continue;
-      for (let j = 0; j < item.images.length; j++) {
-        if (item.images[j].startsWith('data:')) {
-          statusEl.textContent = 'กำลังย้ายรูปขึ้น Storage...';
-          const path = `pr-images/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-          const ref = storage.ref(path);
-          await ref.putString(item.images[j], 'data_url');
-          item.images[j] = await ref.getDownloadURL();
+    // ดึง doc ที่มีอยู่แล้ว เพื่อลบอันที่ถูกลบออก
+    const existing = await db.collection('prItems').get();
+    const existingIds = new Set(existing.docs.map(d => d.id));
+    const keepIds = new Set(_prItems.map(it => it._docId).filter(Boolean));
+    for (const id of existingIds) {
+      if (!keepIds.has(id)) await db.collection('prItems').doc(id).delete();
+    }
+
+    // บันทึกแต่ละประกาศเป็น document ของตัวเอง
+    for (let i = 0; i < _prItems.length; i++) {
+      const item = _prItems[i];
+      statusEl.textContent = `กำลังบันทึก ${i+1}/${_prItems.length}...`;
+
+      // พยายาม migrate base64 → Storage; ถ้าล้มเหลวใช้ base64 ต่อ (แต่ใน doc เดี่ยว)
+      const images = [];
+      for (const src of (item.images || [])) {
+        if (src.startsWith('data:')) {
+          try {
+            const path = `pr-images/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+            const ref = storage.ref(path);
+            await ref.putString(src, 'data_url');
+            images.push(await ref.getDownloadURL());
+          } catch { images.push(src); } // เก็บ base64 ถ้า Storage ไม่ได้
+        } else {
+          images.push(src);
         }
       }
+
+      const data = { date: item.date||'', title: item.title||'', body: item.body||'', images, order: i };
+      const docRef = item._docId
+        ? db.collection('prItems').doc(item._docId)
+        : db.collection('prItems').doc();
+      await docRef.set(data);
+      _prItems[i] = { ...data, _docId: docRef.id };
     }
-    await db.collection('config').doc('prPage').set({ items: _prItems });
+
     renderPrPage();
+    renderPrItems();
     statusEl.textContent = '✓ บันทึกแล้ว';
     showToast('บันทึกประชาสัมพันธ์แล้ว ✓');
   } catch(e) {
