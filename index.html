@@ -298,8 +298,15 @@ body {
 #pr-lightbox { display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center; }
 #pr-lightbox.open { display:flex; }
 .pr-lb-bg { position:absolute; inset:0; background:rgba(0,0,0,0.92); }
-.pr-lb-img { position:relative; z-index:1; max-width:95vw; max-height:90vh; object-fit:contain; border-radius:6px; }
-.pr-lb-close { position:absolute; top:0.75rem; right:0.75rem; z-index:2; background:rgba(255,255,255,0.18); color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:1.1rem; cursor:pointer; line-height:36px; text-align:center; }
+.pr-lb-img { position:relative; z-index:1; max-width:95vw; max-height:90vh; object-fit:contain; border-radius:6px; user-select:none; }
+.pr-lb-close { position:absolute; top:0.75rem; right:0.75rem; z-index:3; background:rgba(255,255,255,0.18); color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:1.1rem; cursor:pointer; line-height:36px; text-align:center; }
+.pr-lb-nav { position:absolute; z-index:2; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.18); color:#fff; border:none; border-radius:50%; width:40px; height:40px; font-size:1.6rem; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
+.pr-lb-prev { left:0.75rem; }
+.pr-lb-next { right:0.75rem; }
+.pr-lb-nav:disabled { opacity:0.2; cursor:default; }
+.pr-lb-dots { position:absolute; bottom:1rem; left:50%; transform:translateX(-50%); z-index:2; display:flex; gap:7px; }
+.pr-lb-dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.35); border:none; cursor:pointer; padding:0; transition:background 0.2s; }
+.pr-lb-dot.active { background:#fff; }
 
 /* ── PHOTOS ── */
 .photos-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; }
@@ -2244,26 +2251,60 @@ async function addPrItemImage(event, i) {
 function renderPrImages(images) {
   if (!images || !images.length) return '';
   const n = Math.min(images.length, 3);
-  const cell = (src, cls='pr-img-cell') => `<div class="${cls}"><img src="${src}" loading="lazy" onclick="openPrLightbox(this.src)"></div>`;
-  if (n === 1) return `<div class="pr-images pr-img-1"><img src="${images[0]}" loading="lazy" onclick="openPrLightbox(this.src)"></div>`;
-  if (n === 2) return `<div class="pr-images pr-img-2">${cell(images[0])}${cell(images[1])}</div>`;
-  return `<div class="pr-images pr-img-3">${cell(images[0],'pr-img3-left')}${cell(images[1])}${cell(images[2])}</div>`;
+  const cell = (src, idx, cls='pr-img-cell') =>
+    `<div class="${cls}"><img src="${src}" loading="lazy" onclick="openPrLightbox(${idx},this.closest('.pr-images'))"></div>`;
+  if (n === 1) return `<div class="pr-images pr-img-1"><img src="${images[0]}" loading="lazy" onclick="openPrLightbox(0,this.closest('.pr-images'))"></div>`;
+  if (n === 2) return `<div class="pr-images pr-img-2">${cell(images[0],0)}${cell(images[1],1)}</div>`;
+  return `<div class="pr-images pr-img-3">${cell(images[0],0,'pr-img3-left')}${cell(images[1],1)}${cell(images[2],2)}</div>`;
 }
 
-function openPrLightbox(src) {
+let _lbImages = [], _lbIdx = 0, _lbTouchX = null;
+
+function openPrLightbox(idx, container) {
+  _lbImages = Array.from(container.querySelectorAll('img')).map(i => i.src);
+  _lbIdx = idx;
   let lb = document.getElementById('pr-lightbox');
   if (!lb) {
     lb = document.createElement('div');
     lb.id = 'pr-lightbox';
-    lb.innerHTML = '<div class="pr-lb-bg"></div><img class="pr-lb-img"><button class="pr-lb-close">✕</button>';
+    lb.innerHTML = '<div class="pr-lb-bg"></div><button class="pr-lb-nav pr-lb-prev">&#8249;</button><img class="pr-lb-img"><button class="pr-lb-nav pr-lb-next">&#8250;</button><button class="pr-lb-close">&#x2715;</button><div class="pr-lb-dots"></div>';
     document.body.appendChild(lb);
-    lb.querySelector('.pr-lb-bg').onclick = closePrLightbox;
+    lb.querySelector('.pr-lb-bg').onclick   = closePrLightbox;
     lb.querySelector('.pr-lb-close').onclick = closePrLightbox;
+    lb.querySelector('.pr-lb-prev').onclick  = () => navPrLightbox(-1);
+    lb.querySelector('.pr-lb-next').onclick  = () => navPrLightbox(1);
+    const img = lb.querySelector('.pr-lb-img');
+    img.addEventListener('touchstart', e => { _lbTouchX = e.touches[0].clientX; }, { passive:true });
+    img.addEventListener('touchend',   e => {
+      if (_lbTouchX === null) return;
+      const dx = e.changedTouches[0].clientX - _lbTouchX;
+      _lbTouchX = null;
+      if (Math.abs(dx) > 40) navPrLightbox(dx < 0 ? 1 : -1);
+    });
   }
-  lb.querySelector('.pr-lb-img').src = src;
+  _updatePrLightbox();
   lb.classList.add('open');
   document.body.style.overflow = 'hidden';
 }
+
+function _updatePrLightbox() {
+  const lb = document.getElementById('pr-lightbox');
+  lb.querySelector('.pr-lb-img').src          = _lbImages[_lbIdx];
+  lb.querySelector('.pr-lb-prev').disabled    = _lbIdx === 0;
+  lb.querySelector('.pr-lb-next').disabled    = _lbIdx === _lbImages.length - 1;
+  const dots = lb.querySelector('.pr-lb-dots');
+  dots.style.display = _lbImages.length > 1 ? 'flex' : 'none';
+  dots.innerHTML = _lbImages.map((_, i) =>
+    `<button class="pr-lb-dot${i===_lbIdx?' active':''}" onclick="navPrLightboxTo(${i})"></button>`
+  ).join('');
+}
+
+function navPrLightbox(dir) {
+  const next = _lbIdx + dir;
+  if (next >= 0 && next < _lbImages.length) { _lbIdx = next; _updatePrLightbox(); }
+}
+function navPrLightboxTo(idx) { _lbIdx = idx; _updatePrLightbox(); }
+
 function closePrLightbox() {
   const lb = document.getElementById('pr-lightbox');
   if (lb) lb.classList.remove('open');
