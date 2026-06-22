@@ -17,6 +17,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <style>
 :root {
   --font: 'Sarabun', sans-serif;
@@ -968,8 +969,9 @@ const FIREBASE_CONFIG = {
 const SHEETS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRP7DbxIDVCRNG_tP_4B1de8itWQD9nqogL0qFvu2GjesFeDPLd-AYGeA3D7FSgZ_Ns3jBPGuibSuAP/pub?gid=2054748674&single=true&output=csv";
 
 firebase.initializeApp(FIREBASE_CONFIG);
-const auth = firebase.auth();
-const db   = firebase.firestore();
+const auth    = firebase.auth();
+const db      = firebase.firestore();
+const storage = firebase.storage();
 
 // ═══ STATE ═══
 let allMembers = [];
@@ -2244,18 +2246,26 @@ async function addPrItemImage(event, i) {
   if (!_prItems[i].images) _prItems[i].images = [];
   if (_prItems[i].images.length >= 3) return;
   showToast('กำลังโหลดรูป...');
-  // ลดขนาดซ้ำจนไม่เกิน ~300KB (base64 ≈ 400000 chars)
-  const MAX_B64 = 400000;
-  const steps = [[1200,0.82],[1200,0.68],[900,0.65],[700,0.58]];
-  let dataUrl;
-  for (const [px, q] of steps) {
-    dataUrl = await compressImage(file, px, q);
-    if (dataUrl.length <= MAX_B64) break;
+  try {
+    // compress จนไม่เกิน ~300KB
+    const MAX_B64 = 400000;
+    const steps = [[1200,0.82],[1200,0.68],[900,0.65],[700,0.58]];
+    let dataUrl;
+    for (const [px, q] of steps) {
+      dataUrl = await compressImage(file, px, q);
+      if (dataUrl.length <= MAX_B64) break;
+    }
+    // อัปโหลดไป Firebase Storage
+    const path = `pr-images/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+    const ref = storage.ref(path);
+    await ref.putString(dataUrl, 'data_url');
+    const url = await ref.getDownloadURL();
+    _prItems[i].images.push(url);
+    renderPrItems();
+    showToast('โหลดรูปแล้ว ✓');
+  } catch(e) {
+    showToast('โหลดรูปไม่ได้: ' + e.message);
   }
-  _prItems[i].images.push(dataUrl);
-  renderPrItems();
-  const kb = Math.round(dataUrl.length * 0.75 / 1024);
-  showToast(`โหลดรูปแล้ว (~${kb} KB)`);
 }
 
 function renderPrImages(images) {
@@ -2322,12 +2332,29 @@ function closePrLightbox() {
 }
 
 async function savePrItems() {
+  const statusEl = document.getElementById('pr-save-status');
+  statusEl.textContent = 'กำลังบันทึก...';
   try {
+    // ย้ายรูป base64 เก่าขึ้น Storage ก่อน (ถ้ามี)
+    for (const item of _prItems) {
+      if (!item.images) continue;
+      for (let j = 0; j < item.images.length; j++) {
+        if (item.images[j].startsWith('data:')) {
+          statusEl.textContent = 'กำลังย้ายรูปขึ้น Storage...';
+          const path = `pr-images/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+          const ref = storage.ref(path);
+          await ref.putString(item.images[j], 'data_url');
+          item.images[j] = await ref.getDownloadURL();
+        }
+      }
+    }
     await db.collection('config').doc('prPage').set({ items: _prItems });
     renderPrPage();
-    document.getElementById('pr-save-status').textContent = '✓ บันทึกแล้ว';
+    statusEl.textContent = '✓ บันทึกแล้ว';
     showToast('บันทึกประชาสัมพันธ์แล้ว ✓');
-  } catch(e) { document.getElementById('pr-save-status').textContent = 'เกิดข้อผิดพลาด: '+e.message; }
+  } catch(e) {
+    statusEl.textContent = 'เกิดข้อผิดพลาด: ' + e.message;
+  }
 }
 
 function renderAlbumLinks() {
