@@ -785,7 +785,7 @@ function doGet(e) {
     var sh = ss.getSheetByName('UPDATE 09 ก.ย.68') || ss.getSheets()[1];
     var v = sh.getDataRange().getValues();
     // COL = 1-indexed column numbers ตาม sheet จริง
-    var COL = {rank:3,fullname:4,nickname:5,position:6,unit:7,phone1:8,phone2:9,shirt:11,email:12,birthday:13};
+    var COL = {rank:3,fullname:4,nickname:5,position:6,unit:7,phone1:8,phone2:9,shirt:11,email:12,birthday:15};
     for (var i = 1; i < v.length; i++) {
       // ถ้า column A ว่าง ให้ใช้ row index (i) เป็น seq แทน — ตรงกับ JS ที่ใช้ i+1
       var rowSeq = v[i][0] !== '' && v[i][0] != null ? String(v[i][0]) : String(i);
