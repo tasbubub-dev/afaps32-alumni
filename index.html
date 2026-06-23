@@ -1954,7 +1954,12 @@ async function loadAdminPage() {
   document.getElementById('admin-role-section').style.display = adminOnly ? 'block' : 'none';
   const contentSection = document.getElementById('admin-content-section');
   if (contentSection) contentSection.style.display = (adminOnly || isEditor()) ? 'block' : 'none';
-  loadContentConfig();
+  if (!_contentConfigLoaded) {
+    loadContentConfig();
+  } else {
+    renderPrItems();
+    renderAlbumLinks();
+  }
   const usersLabel = document.getElementById('admin-users-label');
   if (usersLabel) usersLabel.textContent = adminOnly ? 'ผูกบัญชีกับสมาชิก / บทบาทผู้ใช้' : 'ผูกบัญชีกับสมาชิก (สาขาของคุณ)';
 
@@ -2206,10 +2211,12 @@ function updateAccountBtn() {
 // ═══ PR & PHOTOS ADMIN SETTINGS ═══
 let _prItems = [];
 let _albumLinks = [];
+let _contentConfigLoaded = false;
 
 function _prDocId(i) { return 'prItem_' + String(i).padStart(3,'0'); }
 
 async function loadContentConfig() {
+  _contentConfigLoaded = true;
   // โหลด PR items จาก config/prItem_NNN (อยู่ใน config collection เดิม)
   try {
     const meta = await db.collection('config').doc('prMeta').get();
