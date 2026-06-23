@@ -2301,19 +2301,22 @@ async function addPrItemImage(event, i) {
   if (!_prItems[i].images) _prItems[i].images = [];
   if (_prItems[i].images.length >= 3) return;
   showToast('กำลังโหลดรูป...');
-  const dataUrl = await compressPrImage(file);
-  // พยายาม upload Storage; ถ้าไม่ได้ใช้ base64 แทน
-  let imgSrc = dataUrl;
   try {
-    const path = `pr-images/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-    const ref = storage.ref(path);
-    await ref.putString(dataUrl, 'data_url');
-    imgSrc = await ref.getDownloadURL();
-  } catch { /* Storage ไม่ได้ ใช้ base64 ต่อ */ }
-  _prItems[i].images.push(imgSrc);
-  renderPrItems();
-  renderPrPage();
-  showToast('โหลดรูปแล้ว ✓');
+    const dataUrl = await compressPrImage(file);
+    let imgSrc = dataUrl;
+    try {
+      const path = `pr-images/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+      const ref = storage.ref(path);
+      await ref.putString(dataUrl, 'data_url');
+      imgSrc = await ref.getDownloadURL();
+    } catch { /* Storage ไม่ได้ ใช้ base64 ต่อ */ }
+    _prItems[i].images.push(imgSrc);
+    renderPrItems();
+    renderPrPage();
+    showToast('โหลดรูปแล้ว ✓');
+  } catch(e) {
+    showToast('เพิ่มรูปไม่ได้: ' + e.message);
+  }
 }
 
 function renderPrImages(images) {
@@ -2650,7 +2653,7 @@ function handleChatKey(e) {
 }
 
 function compressImage(file, maxPx, quality) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
@@ -2665,6 +2668,7 @@ function compressImage(file, maxPx, quality) {
       URL.revokeObjectURL(url);
       resolve(canvas.toDataURL('image/jpeg', quality));
     };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('ไม่สามารถโหลดไฟล์รูปได้')); };
     img.src = url;
   });
 }
