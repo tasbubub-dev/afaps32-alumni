@@ -1093,7 +1093,7 @@ auth.onAuthStateChanged(user => {
     loadUserProfile();
     loadMembers();
     loadAppsScriptConfig();
-    loadContentConfig();
+    startContentConfig();
   } else {
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
@@ -1954,12 +1954,9 @@ async function loadAdminPage() {
   document.getElementById('admin-role-section').style.display = adminOnly ? 'block' : 'none';
   const contentSection = document.getElementById('admin-content-section');
   if (contentSection) contentSection.style.display = (adminOnly || isEditor()) ? 'block' : 'none';
-  if (!_contentConfigLoaded) {
-    loadContentConfig();
-  } else {
-    renderPrItems();
-    renderAlbumLinks();
-  }
+  await startContentConfig();
+  renderPrItems();
+  renderAlbumLinks();
   const usersLabel = document.getElementById('admin-users-label');
   if (usersLabel) usersLabel.textContent = adminOnly ? 'ผูกบัญชีกับสมาชิก / บทบาทผู้ใช้' : 'ผูกบัญชีกับสมาชิก (สาขาของคุณ)';
 
@@ -2211,12 +2208,16 @@ function updateAccountBtn() {
 // ═══ PR & PHOTOS ADMIN SETTINGS ═══
 let _prItems = [];
 let _albumLinks = [];
-let _contentConfigLoaded = false;
+let _contentConfigPromise = null;
+
+function startContentConfig() {
+  if (!_contentConfigPromise) _contentConfigPromise = loadContentConfig();
+  return _contentConfigPromise;
+}
 
 function _prDocId(i) { return 'prItem_' + String(i).padStart(3,'0'); }
 
 async function loadContentConfig() {
-  _contentConfigLoaded = true;
   // โหลด PR items จาก config/prItem_NNN (อยู่ใน config collection เดิม)
   try {
     const meta = await db.collection('config').doc('prMeta').get();
