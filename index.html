@@ -2246,6 +2246,19 @@ function addPrItem() {
   renderPrItems();
 }
 
+// สูงสุด ~200KB ต่อรูป → 3 รูป = 600KB < 1MB Firestore limit
+const PR_IMG_MAX = 270000;
+const PR_IMG_STEPS = [[1200,0.80],[1000,0.68],[800,0.58],[600,0.50],[500,0.45]];
+
+async function compressPrImage(file) {
+  let dataUrl;
+  for (const [px, q] of PR_IMG_STEPS) {
+    dataUrl = await compressImage(file, px, q);
+    if (dataUrl.length <= PR_IMG_MAX) break;
+  }
+  return dataUrl;
+}
+
 async function addPrItemImage(event, i) {
   const file = event.target.files[0];
   event.target.value = '';
@@ -2253,14 +2266,7 @@ async function addPrItemImage(event, i) {
   if (!_prItems[i].images) _prItems[i].images = [];
   if (_prItems[i].images.length >= 3) return;
   showToast('กำลังโหลดรูป...');
-  // compress จนไม่เกิน ~300KB
-  const MAX_B64 = 400000;
-  const steps = [[1200,0.82],[1200,0.68],[900,0.65],[700,0.58]];
-  let dataUrl;
-  for (const [px, q] of steps) {
-    dataUrl = await compressImage(file, px, q);
-    if (dataUrl.length <= MAX_B64) break;
-  }
+  const dataUrl = await compressPrImage(file);
   // พยายาม upload Storage; ถ้าไม่ได้ใช้ base64 แทน
   let imgSrc = dataUrl;
   try {
@@ -2355,16 +2361,24 @@ async function savePrItems() {
       const item = _prItems[i];
       statusEl.textContent = `กำลังบันทึก ${i+1}/${_prItems.length}...`;
 
-      // พยายาม migrate base64 → Storage; ถ้าล้มเหลวใช้ base64 ต่อ (แต่ใน doc เดี่ยว)
+      // migrate base64 → Storage; ถ้าไม่ได้ให้ compress ให้เล็กสุดแล้วเก็บ base64
       const images = [];
       for (const src of (item.images || [])) {
         if (src.startsWith('data:')) {
+          let stored = src;
           try {
             const path = `pr-images/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
             const ref = storage.ref(path);
             await ref.putString(src, 'data_url');
-            images.push(await ref.getDownloadURL());
-          } catch { images.push(src); } // เก็บ base64 ถ้า Storage ไม่ได้
+            stored = await ref.getDownloadURL();
+          } catch {
+            // Storage ไม่ได้: re-compress ให้ไม่เกิน PR_IMG_MAX
+            if (src.length > PR_IMG_MAX) {
+              const blob = await (await fetch(src)).blob();
+              stored = await compressPrImage(new File([blob], 'img.jpg', { type: blob.type }));
+            }
+          }
+          images.push(stored);
         } else {
           images.push(src);
         }
@@ -2384,6 +2398,9 @@ async function savePrItems() {
     showToast('บันทึกประชาสัมพันธ์แล้ว ✓');
   } catch(e) {
     statusEl.textContent = 'เกิดข้อผิดพลาด: ' + e.message;
+    showToast('บันทึกไม่สำเร็จ: ' + e.message);
+    renderPrPage();
+    renderPrItems();
   }
 }
 
