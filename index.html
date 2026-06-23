@@ -2186,19 +2186,23 @@ let _prItems = [];
 let _albumLinks = [];
 
 async function loadContentConfig() {
+  // โหลด PR items — แต่ละส่วนอิสระ ไม่กระทบกัน
   try {
-    // โหลดจาก collection ใหม่ก่อน (แต่ละ doc = 1 ประกาศ)
     const snap = await db.collection('prItems').orderBy('order').get();
-    if (!snap.empty) {
-      _prItems = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
-    } else {
-      // fallback: โหลดจาก doc เดิม
+    if (!snap.empty) _prItems = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+  } catch {}
+  if (!_prItems.length) {
+    try {
       const pr = await db.collection('config').doc('prPage').get();
       if (pr.exists) _prItems = (pr.data().items || []).map(item => ({ ...item, _docId: null }));
-    }
+    } catch {}
+  }
+  // โหลด photo links — แยกอิสระ
+  try {
     const al = await db.collection('config').doc('photosPage').get();
     if (al.exists) _albumLinks = al.data().links || [];
-  } catch(e) {}
+  } catch {}
+
   renderPrItems();
   renderAlbumLinks();
   renderPrPage();
