@@ -2317,11 +2317,15 @@ async function addPrItemImage(event, i) {
       const ref = storage.ref(path);
       await ref.putString(dataUrl, 'data_url');
       imgSrc = await ref.getDownloadURL();
-    } catch { /* Storage ไม่ได้ ใช้ base64 ต่อ */ }
+    } catch(storErr) {
+      console.warn('Storage upload failed:', storErr?.message);
+      showToast('⚠️ Storage ไม่ได้: ' + (storErr?.message || storErr));
+      // imgSrc ยังเป็น base64 — รอ save เพื่อ retry
+    }
     _prItems[i].images.push(imgSrc);
     renderPrItems();
     renderPrPage();
-    showToast('โหลดรูปแล้ว ✓');
+    showToast(imgSrc.startsWith('data:') ? 'รูปใน memory (กด บันทึก เพื่อ upload Storage)' : 'โหลดรูปแล้ว ✓');
   } catch(e) {
     showToast('เพิ่มรูปไม่ได้: ' + e.message);
   }
@@ -2415,7 +2419,10 @@ async function savePrItems() {
             const ref = storage.ref(path);
             await ref.putString(src, 'data_url');
             stored = await ref.getDownloadURL();
-          } catch {
+          } catch(storErr) {
+            console.warn('Storage save failed:', storErr?.message);
+            statusEl.textContent = '⚠️ Storage: ' + (storErr?.message || storErr);
+            // fallback: เก็บ base64 ถ้า Storage ไม่ได้
             if (src.length > PR_IMG_MAX) {
               const blob = await (await fetch(src)).blob();
               stored = await compressPrImage(new File([blob], 'img.jpg', {type: blob.type}));
