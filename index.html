@@ -2207,16 +2207,25 @@ function updateAccountBtn() {
 let _prItems = [];
 let _albumLinks = [];
 
+function _prDocId(i) { return 'prItem_' + String(i).padStart(3,'0'); }
+
 async function loadContentConfig() {
-  // โหลด PR items — แต่ละส่วนอิสระ ไม่กระทบกัน
+  // โหลด PR items จาก config/prItem_NNN (อยู่ใน config collection เดิม)
   try {
-    const snap = await db.collection('prItems').orderBy('order').get();
-    if (!snap.empty) _prItems = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+    const meta = await db.collection('config').doc('prMeta').get();
+    const count = meta.exists ? (meta.data().count || 0) : 0;
+    if (count > 0) {
+      const docs = await Promise.all(
+        Array.from({length: count}, (_, i) => db.collection('config').doc(_prDocId(i)).get())
+      );
+      _prItems = docs.filter(d => d.exists).map((d, i) => ({ _idx: i, ...d.data() }));
+    }
   } catch {}
+  // fallback: โหลดจาก config/prPage เดิม
   if (!_prItems.length) {
     try {
       const pr = await db.collection('config').doc('prPage').get();
-      if (pr.exists) _prItems = (pr.data().items || []).map(item => ({ ...item, _docId: null }));
+      if (pr.exists) _prItems = (pr.data().items || []).map((item, i) => ({ ...item, _idx: null }));
     } catch {}
   }
   // โหลด photo links — แยกอิสระ
@@ -2374,20 +2383,18 @@ async function savePrItems() {
   const statusEl = document.getElementById('pr-save-status');
   statusEl.textContent = 'กำลังบันทึก...';
   try {
-    // ดึง doc ที่มีอยู่แล้ว เพื่อลบอันที่ถูกลบออก
-    const existing = await db.collection('prItems').get();
-    const existingIds = new Set(existing.docs.map(d => d.id));
-    const keepIds = new Set(_prItems.map(it => it._docId).filter(Boolean));
-    for (const id of existingIds) {
-      if (!keepIds.has(id)) await db.collection('prItems').doc(id).delete();
+    // ลบ doc เก่าที่เกินจำนวนปัจจุบัน
+    const oldMeta = await db.collection('config').doc('prMeta').get();
+    const oldCount = oldMeta.exists ? (oldMeta.data().count || 0) : 0;
+    for (let i = _prItems.length; i < oldCount; i++) {
+      await db.collection('config').doc(_prDocId(i)).delete();
     }
 
-    // บันทึกแต่ละประกาศเป็น document ของตัวเอง
+    // บันทึกแต่ละประกาศใน config/prItem_NNN
     for (let i = 0; i < _prItems.length; i++) {
       const item = _prItems[i];
       statusEl.textContent = `กำลังบันทึก ${i+1}/${_prItems.length}...`;
 
-      // migrate base64 → Storage; ถ้าไม่ได้ให้ compress ให้เล็กสุดแล้วเก็บ base64
       const images = [];
       for (const src of (item.images || [])) {
         if (src.startsWith('data:')) {
@@ -2398,10 +2405,9 @@ async function savePrItems() {
             await ref.putString(src, 'data_url');
             stored = await ref.getDownloadURL();
           } catch {
-            // Storage ไม่ได้: re-compress ให้ไม่เกิน PR_IMG_MAX
             if (src.length > PR_IMG_MAX) {
               const blob = await (await fetch(src)).blob();
-              stored = await compressPrImage(new File([blob], 'img.jpg', { type: blob.type }));
+              stored = await compressPrImage(new File([blob], 'img.jpg', {type: blob.type}));
             }
           }
           images.push(stored);
@@ -2410,13 +2416,11 @@ async function savePrItems() {
         }
       }
 
-      const data = { date: item.date||'', title: item.title||'', body: item.body||'', images, order: i };
-      const docRef = item._docId
-        ? db.collection('prItems').doc(item._docId)
-        : db.collection('prItems').doc();
-      await docRef.set(data);
-      _prItems[i] = { ...data, _docId: docRef.id };
+      const data = { date: item.date||'', title: item.title||'', body: item.body||'', images };
+      await db.collection('config').doc(_prDocId(i)).set(data);
+      _prItems[i] = { ...data, _idx: i };
     }
+    await db.collection('config').doc('prMeta').set({ count: _prItems.length });
 
     renderPrPage();
     renderPrItems();
