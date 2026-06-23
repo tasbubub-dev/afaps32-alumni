@@ -1357,13 +1357,35 @@ function updateUnitScrollBtns() {
   if (dn) dn.disabled = list.scrollTop + list.clientHeight >= list.scrollHeight - 1;
 }
 
+const _THAI_MONTHS_FULL  = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const _THAI_MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+function bdSearchText(bd) {
+  if (!bd) return '';
+  let extra = bd;
+  // DD/MM/YYYY → เพิ่มชื่อเดือนไทย
+  const num = bd.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+  if (num) {
+    const mi = parseInt(num[2], 10) - 1;
+    if (mi >= 0 && mi < 12) extra += ' ' + _THAI_MONTHS_FULL[mi] + ' ' + _THAI_MONTHS_SHORT[mi];
+  }
+  // ชื่อเดือนไทย → เพิ่มตัวเลข เช่น 03
+  for (let i = 0; i < _THAI_MONTHS_FULL.length; i++) {
+    if (bd.includes(_THAI_MONTHS_FULL[i]) || bd.includes(_THAI_MONTHS_SHORT[i])) {
+      extra += ' ' + String(i + 1).padStart(2, '0') + ' ' + (i + 1);
+      break;
+    }
+  }
+  return extra.toLowerCase();
+}
+
 function filterAndRender() {
   const q    = (document.getElementById('search-input').value || '').trim().toLowerCase();
   const unit = currentUnitFilter || 'all';
   filteredMembers = allMembers.filter(m => {
     const branchOk = currentBranch === 'all' || m.branch === currentBranch;
     const unitOk   = unit === 'all' || m.unit === unit;
-    const searchOk = !q || [m.rank, m.fullname, m.nickname, m.position, m.unit, m.birthday]
+    const searchOk = !q || [m.rank, m.fullname, m.nickname, m.position, m.unit, bdSearchText(m.birthday)]
       .some(s => (s||'').toLowerCase().includes(q));
     return branchOk && unitOk && searchOk;
   });
