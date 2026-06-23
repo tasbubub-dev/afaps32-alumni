@@ -2487,6 +2487,29 @@ const THAI_MONTHS = {
   'พฤษภาคม':5,'มิถุนายน':6,'กรกฎาคม':7,'สิงหาคม':8,
   'กันยายน':9,'ตุลาคม':10,'พฤศจิกายน':11,'ธันวาคม':12
 };
+const THAI_MONTHS_SHORT_MAP = {
+  'ม.ค.':1,'ก.พ.':2,'มี.ค.':3,'เม.ย.':4,'พ.ค.':5,'มิ.ย.':6,
+  'ก.ค.':7,'ส.ค.':8,'ก.ย.':9,'ต.ค.':10,'พ.ย.':11,'ธ.ค.':12
+};
+
+function parsePrDate(dateStr) {
+  if (!dateStr) return 0;
+  const s = dateStr.trim();
+  let year = 0, month = 0, day = 0;
+  const yM = s.match(/(\d{4})/);
+  if (yM) year = parseInt(yM[1], 10);
+  for (const [name, num] of Object.entries(THAI_MONTHS)) {
+    if (s.includes(name)) { month = num; break; }
+  }
+  if (!month) {
+    for (const [sh, num] of Object.entries(THAI_MONTHS_SHORT_MAP)) {
+      if (s.includes(sh)) { month = num; break; }
+    }
+  }
+  const dM = s.match(/^(\d{1,2})\b/);
+  if (dM) day = parseInt(dM[1], 10);
+  return year * 10000 + month * 100 + day;
+}
 
 function parseBirthdayDayMonth(bStr) {
   if (!bStr) return null;
@@ -2537,8 +2560,9 @@ function renderPrPage() {
       </div>`;
   }
 
-  const prHtml = _prItems.length
-    ? _prItems.map(item => `
+  const sortedItems = [..._prItems].sort((a, b) => parsePrDate(b.date) - parsePrDate(a.date));
+  const prHtml = sortedItems.length
+    ? sortedItems.map(item => `
         <div class="pr-card">
           ${item.date  ? `<div class="pr-date">${escHtml(item.date)}</div>`  : ''}
           ${item.title ? `<div class="pr-title">${escHtml(item.title)}</div>` : ''}
