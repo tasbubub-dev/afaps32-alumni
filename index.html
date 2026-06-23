@@ -689,6 +689,9 @@ body {
   <div class="page-admin" id="page-admin">
     <div class="page-section-title">จัดการระบบ</div>
 
+    <!-- Admin-only sections (ซ่อนสำหรับ Editor) -->
+    <div id="admin-only-section">
+
     <!-- กำหนด role จากชื่อสมาชิก (Admin เท่านั้น) -->
     <div id="admin-role-section">
       <div class="admin-section-label">กำหนด Role ให้สมาชิก</div>
@@ -813,6 +816,7 @@ function doGet(e) {
 }</textarea>
       </div>
     </div>
+    </div><!-- /admin-only-section -->
 
     <!-- ตั้งค่าประชาสัมพันธ์ + ภาพถ่าย (admin ทุกระดับ) -->
     <div id="admin-content-section" style="display:none">
@@ -1056,6 +1060,9 @@ function getUserRole() { return currentUserProfile?.role || 'member'; }
 function isAdmin() {
   if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) return true;
   return getUserRole() === 'admin';
+}
+function isEditor() {
+  return getUserRole().startsWith('editor_');
 }
 function canEditMember(m) {
   if (isAdmin()) return true;
@@ -1534,7 +1541,7 @@ let currentTab = 'directory';
 
 function switchTab(tab) {
   // Admin-only tab guard
-  if (tab === 'admin' && !isAdmin()) { tab = 'directory'; }
+  if (tab === 'admin' && !isAdmin() && !isEditor()) { tab = 'directory'; }
 
   currentTab = tab;
   document.querySelectorAll('.page-pr,.page-photos,.page-chat,.page-changepass,.page-admin,.grid-wrap')
@@ -1619,7 +1626,7 @@ async function loadUserProfile() {
     try { await db.collection('userProfiles').doc(currentUser.uid).set(currentUserProfile); } catch(_) {}
   }
 
-  document.getElementById('tab-admin').style.display = isAdmin() ? 'flex' : 'none';
+  document.getElementById('tab-admin').style.display = (isAdmin() || isEditor()) ? 'flex' : 'none';
   updateAccountBtn();
   await checkAutoLink();
 }
@@ -1949,16 +1956,21 @@ async function saveMemberRoleFromSearch() {
 
 // ═══ ADMIN PAGE ═══
 async function loadAdminPage() {
-  // แสดง/ซ่อน section ตาม role
   const adminOnly = isAdmin();
-  document.getElementById('admin-role-section').style.display = adminOnly ? 'block' : 'none';
+  // Admin-only sections (ผูกบัญชี, role, sync, apps script)
+  const adminOnlySection = document.getElementById('admin-only-section');
+  if (adminOnlySection) adminOnlySection.style.display = adminOnly ? 'block' : 'none';
+  // Content section (ประชาสัมพันธ์ + ลิงค์ภาพถ่าย): Admin + Editor
   const contentSection = document.getElementById('admin-content-section');
   if (contentSection) contentSection.style.display = (adminOnly || isEditor()) ? 'block' : 'none';
   await startContentConfig();
   renderPrItems();
   renderAlbumLinks();
+
+  if (!adminOnly) return; // Editor หยุดตรงนี้ ไม่ต้องโหลด userProfiles
+
   const usersLabel = document.getElementById('admin-users-label');
-  if (usersLabel) usersLabel.textContent = adminOnly ? 'ผูกบัญชีกับสมาชิก / บทบาทผู้ใช้' : 'ผูกบัญชีกับสมาชิก (สาขาของคุณ)';
+  if (usersLabel) usersLabel.textContent = 'ผูกบัญชีกับสมาชิก / บทบาทผู้ใช้';
 
   const listEl = document.getElementById('admin-users-list');
   listEl.innerHTML = '<div style="text-align:center;color:#aaa;padding:1rem"><div class="spinner" style="margin:0 auto 0.5rem"></div>กำลังโหลด...</div>';
@@ -2159,7 +2171,7 @@ async function checkAutoLink() {
         if (pr.exists && pr.data().role && currentUserProfile.role === 'member') {
           await db.collection('userProfiles').doc(currentUser.uid).update({ role: pr.data().role });
           currentUserProfile.role = pr.data().role;
-          document.getElementById('tab-admin').style.display = isAdmin() ? 'flex' : 'none';
+          document.getElementById('tab-admin').style.display = (isAdmin() || isEditor()) ? 'flex' : 'none';
           break;
         }
       } catch(_) {}
