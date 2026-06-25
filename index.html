@@ -1593,15 +1593,15 @@ function openDetail(id) {
     { icon:posIcon,   label:'ตำแหน่ง',  val:m.position },
     { icon:unitIcon,  label:'หน่วยงาน', val:m.unit },
     { icon:emailIcon, label:'อีเมล์',    val:m.email, link:`mailto:${m.email}` },
-    { icon:shirtIcon, label:'ธุรกิจส่วนตัว/อาชีพเสริม', val:m.business }
-  ].filter(r => r.val);
+    { icon:shirtIcon, label:'ธุรกิจส่วนตัว/อาชีพเสริม', val:m.business, always:true }
+  ].filter(r => r.val || r.always);
 
   rowsHtml += infoRows.map(r => `
     <div class="modal-row" ${r.link ? `onclick="window.location='${r.link}'"` : ''} style="${r.link?'cursor:pointer':''}">
       <div class="modal-row-icon">${r.icon}</div>
       <div class="modal-row-content">
         <span class="modal-row-label">${r.label}</span>
-        <span class="modal-row-val">${escHtml(r.val)}</span>
+        <span class="modal-row-val">${r.val ? escHtml(r.val) : '<span style="color:#ccc">ยังไม่ระบุ</span>'}</span>
       </div>
     </div>`).join('');
 
