@@ -1319,8 +1319,9 @@ const POSITION_GROUPS_ORDER = [
   'ผบช.','รอง ผบช.',
   'ผบก.','รอง ผบก.',
   'ผกก.','รอง ผกก.',
-  'กรมสอบสวนคดีพิเศษ','ศุลกากร','อัยการ','ผู้พิพากษา',
-  'นักบิน','ปปง.','ข้าราชการบำนาญ','ธุรกิจส่วนตัว'
+  'กรมสอบสวนคดีพิเศษ','นายตำรวจราชองครักษ์',
+  'ศุลกากร','อัยการ','ผู้พิพากษา',
+  'นักบิน','ปปง.','ข้าราชการบำนาญ','ธุรกิจส่วนตัว','เสียชีวิต'
 ];
 const DSI_NICKNAMES = new Set(['กันตวีร์','จตุพล','ธรรศ','วิษณุ','สิริวิชญ์']);
 const RETIREMENT_YEARS = [2569,2570,2571,2572,2573,2574,2575,2576,2577];
@@ -1329,8 +1330,12 @@ function getMemberPositionGroup(m) {
   const pos  = (m.position || '').trim();
   const nick = (m.nickname || '').trim();
   if (DSI_NICKNAMES.has(nick))                              return 'กรมสอบสวนคดีพิเศษ';
+  if (pos.includes('เสียชีวิต'))                          return 'เสียชีวิต';
+  if (pos.includes('ราชองครักษ์'))                        return 'นายตำรวจราชองครักษ์';
   if (pos.includes('(สบ 5)'))                              return 'รอง ผบก.';
   if (pos.includes('(สบ 4)'))                              return 'ผกก.';
+  if (pos.startsWith('รอง จตร.'))                          return 'รอง ผบช.';
+  if (pos.startsWith('สวญ.'))                              return 'รอง ผกก.';
   for (const rank of POSITION_RANKS_ORDERED) {
     if (pos.startsWith(rank)) return rank;
   }
