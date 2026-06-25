@@ -1147,8 +1147,6 @@ async function preloadPhoneEmailMap() {
 }
 _phoneEmailMapReady = preloadPhoneEmailMap();
 
-const PHONE_EMAIL_OVERRIDE = { '0899996545': 'tasbubub@gmail.com' };
-
 async function doLogin() {
   const phone = (document.getElementById('login-phone').value || '').trim().replace(/[-\s]/g,'');
   const pass  = document.getElementById('login-password').value;
@@ -1162,15 +1160,15 @@ async function doLogin() {
   btn.textContent = 'กำลังตรวจสอบ...';
   btn.disabled = true;
   await _phoneEmailMapReady;
-  // เช็คสิทธิ์ — เบอร์ต้องมีใน sheet หรือ override
-  if (!_validPhones.has(phone) && !PHONE_EMAIL_OVERRIDE[phone]) {
+  // เช็คสิทธิ์ — เบอร์ต้องมีใน sheet เท่านั้น
+  if (!_validPhones.has(phone)) {
     errEl.textContent = 'ไม่มีสิทธิ์ใช้งาน';
     btn.textContent = 'เข้าสู่ระบบ';
     btn.disabled = false;
     return;
   }
   btn.textContent = 'กำลังเข้าสู่ระบบ...';
-  const vEmail = PHONE_EMAIL_OVERRIDE[phone] || phoneEmailMap[phone] || phoneToEmail(phone);
+  const vEmail = phoneEmailMap[phone] || phoneToEmail(phone);
 
   try {
     await auth.signInWithEmailAndPassword(vEmail, pass);
