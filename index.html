@@ -1349,6 +1349,14 @@ function getMemberPositionGroup(m) {
   return 'ธุรกิจส่วนตัว';
 }
 
+function getMemberUnitGroup(m) {
+  const pos  = (m.position || '').trim();
+  const unit = (m.unit || '').trim();
+  if (pos.includes('นักบิน') || pos.includes('ครูการบิน')) return 'นักบิน';
+  if (unit && /[a-zA-Z]/.test(unit)) return 'ธุรกิจส่วนตัว';
+  return unit;
+}
+
 function calcRetirementYear(birthday) {
   if (!birthday) return null;
   let month = 0, year = 0;
@@ -1367,8 +1375,14 @@ function calcRetirementYear(birthday) {
 function populateUnitFilter() {
   let opts;
   if (currentFilterType === 'unit') {
-    const units = [...new Set(allMembers.map(m => m.unit).filter(Boolean))].sort((a,b) => a.localeCompare(b,'th'));
-    opts = [{val:'all', label:'ทุกหน่วย'}, ...units.map(u => ({val:u, label:u}))];
+    const unitGroups = new Set(allMembers.map(m => getMemberUnitGroup(m)).filter(Boolean));
+    const SPECIAL_UNITS = ['นักบิน', 'ธุรกิจส่วนตัว'];
+    const regularUnits = [...unitGroups].filter(g => !SPECIAL_UNITS.includes(g)).sort((a,b) => a.localeCompare(b,'th'));
+    opts = [
+      {val:'all', label:'ทุกหน่วย'},
+      ...SPECIAL_UNITS.filter(g => unitGroups.has(g)).map(g => ({val:g, label:g})),
+      ...regularUnits.map(u => ({val:u, label:u}))
+    ];
   } else if (currentFilterType === 'position') {
     const groups = new Set(allMembers.map(m => getMemberPositionGroup(m)).filter(Boolean));
     opts = [{val:'all', label:'ทุกตำแหน่ง'},
@@ -1484,7 +1498,7 @@ function filterAndRender() {
     let filterOk = true;
     if (currentFilterValue !== 'all') {
       if (currentFilterType === 'unit') {
-        filterOk = m.unit === currentFilterValue;
+        filterOk = getMemberUnitGroup(m) === currentFilterValue;
       } else if (currentFilterType === 'position') {
         filterOk = getMemberPositionGroup(m) === currentFilterValue;
       } else {
