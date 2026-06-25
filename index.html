@@ -1314,17 +1314,34 @@ const POSITION_RANKS_ORDERED = [
   'ผบก.','รอง ผบก.',
   'ผกก.','รอง ผกก.'
 ];
-const RETIREMENT_YEARS = [2569,2570,2571,2572,2573,2574,2575,2576,2577,2578];
+const POSITION_GROUPS_ORDER = [
+  'ผบ.ตร.','รอง ผบ.ตร.','ผู้ช่วย ผบ.ตร.',
+  'ผบช.','รอง ผบช.',
+  'ผบก.','รอง ผบก.',
+  'ผกก.','รอง ผกก.',
+  'กรมสอบสวนคดีพิเศษ','ศุลกากร','อัยการ','ผู้พิพากษา',
+  'นักบิน','ปปง.','ข้าราชการบำนาญ','ธุรกิจส่วนตัว'
+];
+const DSI_NICKNAMES = new Set(['กันตวีร์','จตุพล','ธรรศ','วิษณุ','สิริวิชญ์']);
+const RETIREMENT_YEARS = [2569,2570,2571,2572,2573,2574,2575,2576,2577];
 
-function extractPositionPrefix(pos) {
-  if (!pos) return '';
-  const p = pos.trim();
+function getMemberPositionGroup(m) {
+  const pos  = (m.position || '').trim();
+  const nick = (m.nickname || '').trim();
+  if (DSI_NICKNAMES.has(nick))                              return 'กรมสอบสวนคดีพิเศษ';
+  if (pos.includes('(สบ 5)'))                              return 'รอง ผบก.';
+  if (pos.includes('(สบ 4)'))                              return 'ผกก.';
   for (const rank of POSITION_RANKS_ORDERED) {
-    if (p.startsWith(rank)) return rank;
+    if (pos.startsWith(rank)) return rank;
   }
-  const m = p.match(/^((?:รอง|ผู้ช่วย)\s+)?([ก-์]+\.)/);
-  if (m) return ((m[1]||'') + m[2]).trim();
-  return p.split(/[\s\/,.(]/)[0] || p;
+  if (pos.includes('ศุลกากร'))                            return 'ศุลกากร';
+  if (pos.includes('อัยการ'))                             return 'อัยการ';
+  if (pos.includes('ผู้พิพากษา'))                        return 'ผู้พิพากษา';
+  if (pos.includes('นักบิน') || pos.includes('ครูการบิน')) return 'นักบิน';
+  if (pos.includes('ปปง'))                                return 'ปปง.';
+  if (pos.includes('ข้าราชการบำนาญ'))                    return 'ข้าราชการบำนาญ';
+  if (!pos) return '';
+  return 'ธุรกิจส่วนตัว';
 }
 
 function calcRetirementYear(birthday) {
@@ -1348,11 +1365,9 @@ function populateUnitFilter() {
     const units = [...new Set(allMembers.map(m => m.unit).filter(Boolean))].sort((a,b) => a.localeCompare(b,'th'));
     opts = [{val:'all', label:'ทุกหน่วย'}, ...units.map(u => ({val:u, label:u}))];
   } else if (currentFilterType === 'position') {
-    const fromSheet = [...new Set(allMembers.map(m => extractPositionPrefix(m.position))
-      .filter(p => p && !POSITION_RANKS_ORDERED.includes(p)))].sort((a,b) => a.localeCompare(b,'th'));
+    const groups = new Set(allMembers.map(m => getMemberPositionGroup(m)).filter(Boolean));
     opts = [{val:'all', label:'ทุกตำแหน่ง'},
-      ...POSITION_RANKS_ORDERED.map(r => ({val:r, label:r})),
-      ...fromSheet.map(p => ({val:p, label:p}))];
+      ...POSITION_GROUPS_ORDER.filter(g => groups.has(g)).map(g => ({val:g, label:g}))];
   } else {
     opts = [{val:'all', label:'ทุกปี'}, ...RETIREMENT_YEARS.map(y => ({val:String(y), label:'ปี '+y}))];
   }
@@ -1466,7 +1481,7 @@ function filterAndRender() {
       if (currentFilterType === 'unit') {
         filterOk = m.unit === currentFilterValue;
       } else if (currentFilterType === 'position') {
-        filterOk = extractPositionPrefix(m.position) === currentFilterValue;
+        filterOk = getMemberPositionGroup(m) === currentFilterValue;
       } else {
         filterOk = String(calcRetirementYear(m.birthday)) === currentFilterValue;
       }
