@@ -1352,7 +1352,8 @@ function getMemberPositionGroup(m) {
 function getMemberUnitGroup(m) {
   const pos  = (m.position || '').trim();
   const unit = (m.unit || '').trim();
-  if (pos.includes('บ.ตร.') || unit.includes('บ.ตร.'))    return 'บ.ตร.';
+  if (unit.startsWith('สง.ผบ.ตร.') || unit === 'สง.ผบ.ตร.') return 'สง.ผบ.ตร.';
+  if (pos.includes('บ.ตร.') || unit.startsWith('บ.ตร.'))  return 'บ.ตร.';
   if (pos.includes('นักบิน') || pos.includes('ครูการบิน')) return 'นักบิน';
   if (unit && /[a-zA-Z]/.test(unit)) return 'ธุรกิจส่วนตัว';
   return unit;
@@ -1377,7 +1378,7 @@ function populateUnitFilter() {
   let opts;
   if (currentFilterType === 'unit') {
     const unitGroups = new Set(allMembers.map(m => getMemberUnitGroup(m)).filter(Boolean));
-    const SPECIAL_UNITS = ['บ.ตร.', 'นักบิน', 'ธุรกิจส่วนตัว'];
+    const SPECIAL_UNITS = ['สง.ผบ.ตร.', 'บ.ตร.', 'นักบิน', 'ธุรกิจส่วนตัว'];
     const regularUnits = [...unitGroups].filter(g => !SPECIAL_UNITS.includes(g)).sort((a,b) => a.localeCompare(b,'th'));
     opts = [
       {val:'all', label:'ทุกหน่วย'},
