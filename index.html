@@ -1319,7 +1319,6 @@ const POSITION_GROUPS_ORDER = [
   'ผบช.','รอง ผบช.',
   'ผบก.','รอง ผบก.',
   'ผกก.','รอง ผกก.',
-  'บ.ตร.',
   'กรมสอบสวนคดีพิเศษ','นายตำรวจราชองครักษ์',
   'ศุลกากร','อัยการ','ผู้พิพากษา',
   'นักบิน','ปปง.','ข้าราชการบำนาญ','ธุรกิจส่วนตัว','เสียชีวิต'
@@ -1333,7 +1332,6 @@ function getMemberPositionGroup(m) {
   if (DSI_NICKNAMES.has(nick))                              return 'กรมสอบสวนคดีพิเศษ';
   if (pos.includes('เสียชีวิต'))                          return 'เสียชีวิต';
   if (pos.includes('ราชองครักษ์'))                        return 'นายตำรวจราชองครักษ์';
-  if (pos.includes('บ.ตร.'))                               return 'บ.ตร.';
   if (pos.includes('(สบ 5)'))                              return 'รอง ผบก.';
   if (pos.includes('(สบ 4)'))                              return 'ผกก.';
   if (pos.startsWith('รอง จตร.'))                          return 'รอง ผบช.';
