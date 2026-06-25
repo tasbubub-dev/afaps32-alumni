@@ -1122,6 +1122,11 @@ document.getElementById('login-phone').addEventListener('keypress', e => { if(e.
 document.getElementById('login-password').addEventListener('keypress', e => { if(e.key==='Enter') doLogin(); });
 
 function phoneToEmail(phone) { return phone + '@tat32.app'; }
+function normalizePhone(raw) {
+  let p = (raw || '').replace(/[\s\-()+.]/g, '').trim();
+  if (p.startsWith('66') && p.length === 11) p = '0' + p.slice(2);
+  return p;
+}
 
 // Pre-load phone→email map from Sheet before auth (Sheet CSV is public)
 let phoneEmailMap = {};
@@ -1136,7 +1141,7 @@ async function preloadPhoneEmailMap() {
     rows.slice(1).forEach(r => {
       const email = (r[COL.email] || '').trim().toLowerCase();
       [r[COL.phone1], r[COL.phone2]].forEach(p => {
-        const ph = (p || '').replace(/[-\s]/g,'').trim();
+        const ph = normalizePhone(p);
         if (/^\d{9,10}$/.test(ph)) {
           _validPhones.add(ph);
           if (email) phoneEmailMap[ph] = email;
@@ -1148,7 +1153,7 @@ async function preloadPhoneEmailMap() {
 _phoneEmailMapReady = preloadPhoneEmailMap();
 
 async function doLogin() {
-  const phone = (document.getElementById('login-phone').value || '').trim().replace(/[-\s]/g,'');
+  const phone = normalizePhone(document.getElementById('login-phone').value);
   const pass  = document.getElementById('login-password').value;
   const errEl = document.getElementById('login-err');
   const btn   = document.getElementById('btn-do-login');
