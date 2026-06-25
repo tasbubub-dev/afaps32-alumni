@@ -107,8 +107,14 @@ body {
 .unit-filter-panel {
   position:fixed; background:#fff; border-radius:12px;
   box-shadow:0 6px 24px rgba(0,0,0,0.18); z-index:500;
-  width:200px; overflow:hidden; display:none;
+  width:220px; overflow:hidden; display:none;
 }
+.filter-type-tabs { display:flex; border-bottom:1px solid #f0f0f0; }
+.filter-type-tab {
+  flex:1; padding:0.35rem 0; font-size:0.68rem; font-family:var(--font);
+  border:none; background:none; cursor:pointer; color:#aaa; border-bottom:2px solid transparent;
+}
+.filter-type-tab.active { color:var(--theme,#1a3a5c); font-weight:700; border-bottom-color:var(--theme,#1a3a5c); }
 .unit-scroll-btn {
   display:block; width:100%; background:#f8f8f8; border:none;
   font-size:0.72rem; color:#888; padding:5px; cursor:pointer; line-height:1.3;
@@ -791,7 +797,7 @@ function doGet(e) {
     var sh = ss.getSheetByName('UPDATE 09 ก.ย.68') || ss.getSheets()[1];
     var v = sh.getDataRange().getValues();
     // COL = 1-indexed column numbers ตาม sheet จริง
-    var COL = {rank:3,fullname:4,nickname:5,position:6,unit:7,phone1:8,phone2:9,shirt:11,email:12,birthday:15};
+    var COL = {rank:3,fullname:4,nickname:5,position:6,unit:7,phone1:8,phone2:9,business:10,email:12,birthday:15};
     for (var i = 1; i < v.length; i++) {
       // ถ้า column A ว่าง ให้ใช้ row index (i) เป็น seq แทน — ตรงกับ JS ที่ใช้ i+1
       var rowSeq = v[i][0] !== '' && v[i][0] != null ? String(v[i][0]) : String(i);
@@ -935,14 +941,8 @@ function doGet(e) {
       <input id="me-phone2" type="tel" placeholder="มือถือ 2">
       <label>อีเมล์</label>
       <input id="me-email" type="email" placeholder="อีเมล์">
-      <label>ไซร์เสื้อ</label>
-      <select id="me-shirt">
-        <option value="">- ไม่ระบุ -</option>
-        <option value="XS">XS</option><option value="S">S</option>
-        <option value="M">M</option><option value="L">L</option>
-        <option value="XL">XL</option><option value="2XL">2XL</option>
-        <option value="3XL">3XL</option>
-      </select>
+      <label>ธุรกิจส่วนตัว/อาชีพเสริม</label>
+      <input id="me-business" type="text" placeholder="ธุรกิจส่วนตัว หรือ อาชีพเสริม">
       <!-- เหล่า: admin เท่านั้น -->
       <div id="me-branch-group" style="display:none">
         <label>เหล่า</label>
@@ -1006,7 +1006,7 @@ const BRANCH_THEME = {
 // ═══ COL MAP ═══
 const COL = {
   seq:0, photo:1, rank:2, fullname:3, nickname:4,
-  position:5, unit:6, phone1:7, phone2:8, level:9, shirt:10, email:11
+  position:5, unit:6, phone1:7, phone2:8, business:9, shirt:10, email:11
 };
 let birthdayColIdx = -1; // resolved from header row at load time
 
@@ -1228,8 +1228,8 @@ async function loadMembers() {
           unit:     r[COL.unit]     || '',
           phone1:   r[COL.phone1]   || '',
           phone2:   r[COL.phone2]   || '',
-          level:    r[COL.level]    || '',
-          shirt:    r[COL.shirt]    || '',
+          business: r[COL.business] || '',
+          shirt:    r[COL.shirt]   || '',
           email:    r[COL.email]    || '',
           birthday: (birthdayColIdx >= 0 ? r[birthdayColIdx] : '') || ''
         };
@@ -1304,20 +1304,85 @@ document.querySelectorAll('.chip').forEach(btn => {
   });
 });
 
-let currentUnitFilter = 'all';
+let currentFilterType  = 'unit'; // 'unit' | 'position' | 'retirement'
+let currentFilterValue = 'all';
 let _unitOptions = [];
 
+const POSITION_RANKS_ORDERED = [
+  'ผบ.ตร.','รอง ผบ.ตร.','ผู้ช่วย ผบ.ตร.',
+  'ผบช.','รอง ผบช.',
+  'ผบก.','รอง ผบก.',
+  'ผกก.','รอง ผกก.'
+];
+const RETIREMENT_YEARS = [2569,2570,2571,2572,2573,2574,2575,2576,2577,2578];
+
+function extractPositionPrefix(pos) {
+  if (!pos) return '';
+  const p = pos.trim();
+  for (const rank of POSITION_RANKS_ORDERED) {
+    if (p.startsWith(rank)) return rank;
+  }
+  const m = p.match(/^((?:รอง|ผู้ช่วย)\s+)?([ก-์]+\.)/);
+  if (m) return ((m[1]||'') + m[2]).trim();
+  return p.split(/[\s\/,.(]/)[0] || p;
+}
+
+function calcRetirementYear(birthday) {
+  if (!birthday) return null;
+  let month = 0, year = 0;
+  const numM = birthday.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+  if (numM) { month = parseInt(numM[2], 10); year = parseInt(numM[3], 10); }
+  else {
+    const yM = birthday.match(/(\d{4})/); if (yM) year = parseInt(yM[1], 10);
+    for (let i = 0; i < _THAI_MONTHS_FULL.length; i++) {
+      if (birthday.includes(_THAI_MONTHS_FULL[i]) || birthday.includes(_THAI_MONTHS_SHORT[i])) { month = i+1; break; }
+    }
+  }
+  if (!year || !month) return null;
+  return (month >= 10 ? year : year - 1) + 61;
+}
+
 function populateUnitFilter() {
-  const units = [...new Set(allMembers.map(m => m.unit).filter(Boolean))].sort((a,b) => a.localeCompare(b,'th'));
-  _unitOptions = [{val:'all', label:'ทุกหน่วย'}, ...units.map(u => ({val:u, label:u}))];
+  let opts;
+  if (currentFilterType === 'unit') {
+    const units = [...new Set(allMembers.map(m => m.unit).filter(Boolean))].sort((a,b) => a.localeCompare(b,'th'));
+    opts = [{val:'all', label:'ทุกหน่วย'}, ...units.map(u => ({val:u, label:u}))];
+  } else if (currentFilterType === 'position') {
+    const fromSheet = [...new Set(allMembers.map(m => extractPositionPrefix(m.position))
+      .filter(p => p && !POSITION_RANKS_ORDERED.includes(p)))].sort((a,b) => a.localeCompare(b,'th'));
+    opts = [{val:'all', label:'ทุกตำแหน่ง'},
+      ...POSITION_RANKS_ORDERED.map(r => ({val:r, label:r})),
+      ...fromSheet.map(p => ({val:p, label:p}))];
+  } else {
+    opts = [{val:'all', label:'ทุกปี'}, ...RETIREMENT_YEARS.map(y => ({val:String(y), label:'ปี '+y}))];
+  }
+  _unitOptions = opts;
   const list = document.getElementById('unit-list');
   if (!list) return;
-  list.innerHTML = _unitOptions.map((u, i) =>
-    `<div class="unit-item${currentUnitFilter===u.val?' sel':''}" onclick="selectUnitByIdx(${i})">${escHtml(u.label)}</div>`
+  list.innerHTML = opts.map((u, i) =>
+    `<div class="unit-item${currentFilterValue===u.val?' sel':''}" onclick="selectUnitByIdx(${i})">${escHtml(u.label)}</div>`
   ).join('');
   list.removeEventListener('scroll', updateUnitScrollBtns);
   list.addEventListener('scroll', updateUnitScrollBtns);
   updateUnitScrollBtns();
+}
+
+function setFilterType(type) {
+  currentFilterType = type;
+  currentFilterValue = 'all';
+  document.querySelectorAll('.filter-type-tab').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+  populateUnitFilter();
+  updateFilterLabel();
+  const list = document.getElementById('unit-list');
+  if (list) list.scrollTop = 0;
+}
+
+function updateFilterLabel() {
+  const allLabels = {unit:'ทุกหน่วย', position:'ทุกตำแหน่ง', retirement:'ทุกปี'};
+  const lbl = currentFilterValue === 'all' ? allLabels[currentFilterType]
+    : (currentFilterType === 'retirement' ? 'ปี '+currentFilterValue : currentFilterValue);
+  const el = document.getElementById('unit-filter-label');
+  if (el) el.textContent = lbl;
 }
 
 function toggleUnitFilter(e) { e?.stopPropagation(); unitFilterOpen ? closeUnitFilter() : openUnitFilter(); }
@@ -1329,7 +1394,7 @@ function openUnitFilter() {
   const panel = document.getElementById('unit-filter-panel');
   const rect = btn.getBoundingClientRect();
   panel.style.display = 'block';
-  const panelW = 200;
+  const panelW = 220;
   panel.style.top  = (rect.bottom + 4) + 'px';
   panel.style.left = Math.min(rect.left, window.innerWidth - panelW - 8) + 'px';
   updateUnitScrollBtns();
@@ -1347,8 +1412,8 @@ function closeUnitFilter() {
 function selectUnitByIdx(i) {
   const opt = _unitOptions[i];
   if (!opt) return;
-  currentUnitFilter = opt.val;
-  document.getElementById('unit-filter-label').textContent = opt.label;
+  currentFilterValue = opt.val;
+  updateFilterLabel();
   document.querySelectorAll('#unit-list .unit-item').forEach((el, idx) =>
     el.classList.toggle('sel', idx === i));
   closeUnitFilter();
@@ -1393,14 +1458,22 @@ function bdSearchText(bd) {
 }
 
 function filterAndRender() {
-  const q    = (document.getElementById('search-input').value || '').trim().toLowerCase();
-  const unit = currentUnitFilter || 'all';
+  const q = (document.getElementById('search-input').value || '').trim().toLowerCase();
   filteredMembers = allMembers.filter(m => {
     const branchOk = currentBranch === 'all' || m.branch === currentBranch;
-    const unitOk   = unit === 'all' || m.unit === unit;
+    let filterOk = true;
+    if (currentFilterValue !== 'all') {
+      if (currentFilterType === 'unit') {
+        filterOk = m.unit === currentFilterValue;
+      } else if (currentFilterType === 'position') {
+        filterOk = extractPositionPrefix(m.position) === currentFilterValue;
+      } else {
+        filterOk = String(calcRetirementYear(m.birthday)) === currentFilterValue;
+      }
+    }
     const searchOk = !q || [m.rank, m.fullname, m.nickname, m.position, m.unit, bdSearchText(m.birthday)]
       .some(s => (s||'').toLowerCase().includes(q));
-    return branchOk && unitOk && searchOk;
+    return branchOk && filterOk && searchOk;
   });
   renderGrid();
   document.getElementById('header-count').textContent = `${filteredMembers.length} คน`;
@@ -1505,7 +1578,7 @@ function openDetail(id) {
     { icon:posIcon,   label:'ตำแหน่ง',  val:m.position },
     { icon:unitIcon,  label:'หน่วยงาน', val:m.unit },
     { icon:emailIcon, label:'อีเมล์',    val:m.email, link:`mailto:${m.email}` },
-    { icon:shirtIcon, label:'ไซร์เสื้อ', val:m.shirt }
+    { icon:shirtIcon, label:'ธุรกิจส่วนตัว/อาชีพเสริม', val:m.business }
   ].filter(r => r.val);
 
   rowsHtml += infoRows.map(r => `
@@ -1575,7 +1648,7 @@ function switchTab(tab) {
     showSimpleHeader('ภาพถ่าย');
     show('page-photos');
   } else if (tab === 'chat') {
-    showSimpleHeader('แชทกลุ่ม นรต.48');
+    showSimpleHeader('ฝากข้อความถึงเพื่อน');
     show('page-chat');
     document.getElementById('chat-input-bar').style.display = 'flex';
     loadChatPage();
@@ -1702,7 +1775,7 @@ function openMemberEdit(memberId, mode) {
   document.getElementById('me-phone1').value = m.phone1 || '';
   document.getElementById('me-phone2').value = m.phone2 || '';
   document.getElementById('me-email').value  = m.email  || '';
-  document.getElementById('me-shirt').value  = m.shirt  || '';
+  document.getElementById('me-business').value = m.business || '';
 
   const branchGroup = document.getElementById('me-branch-group');
   if (isAdmin() && !isSelf) {
@@ -1740,7 +1813,7 @@ async function saveMemberEdit() {
   addIfNotEmpty(data, 'phone1', document.getElementById('me-phone1').value.trim());
   addIfNotEmpty(data, 'phone2', document.getElementById('me-phone2').value.trim());
   addIfNotEmpty(data, 'email',  document.getElementById('me-email').value.trim());
-  addIfNotEmpty(data, 'shirt',  document.getElementById('me-shirt').value);
+  addIfNotEmpty(data, 'business', document.getElementById('me-business').value.trim());
 
   if (pendingPhotoDataUrl) { data.photoUrl = pendingPhotoDataUrl; }
 
@@ -1874,7 +1947,7 @@ async function importMembersToFirebase() {
           unit:     m.unit      || '',
           phone1:   m.phone1    || '',
           phone2:   m.phone2    || '',
-          level:    m.level     || '',
+          business: m.business  || '',
           shirt:    m.shirt     || '',
           email:    m.email     || '',
           birthday: m.birthday  || '',
@@ -2779,8 +2852,13 @@ function openFullImg(src) {
 }
 </script>
 
-<!-- Unit filter floating panel -->
+<!-- Filter floating panel -->
 <div class="unit-filter-panel" id="unit-filter-panel">
+  <div class="filter-type-tabs">
+    <button class="filter-type-tab active" data-type="unit" onclick="setFilterType('unit')">หน่วยงาน</button>
+    <button class="filter-type-tab" data-type="position" onclick="setFilterType('position')">ตำแหน่ง</button>
+    <button class="filter-type-tab" data-type="retirement" onclick="setFilterType('retirement')">ปีเกษียณ</button>
+  </div>
   <button class="unit-scroll-btn" id="unit-up-btn" onclick="scrollUnitList(-1)">▲</button>
   <div class="unit-list" id="unit-list"></div>
   <button class="unit-scroll-btn" id="unit-dn-btn" onclick="scrollUnitList(1)">▼</button>
