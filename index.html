@@ -1355,7 +1355,7 @@ function getMemberUnitGroup(m) {
   if (unit.startsWith('สง.ผบ.ตร.') || unit === 'สง.ผบ.ตร.') return 'สง.ผบ.ตร.';
   if (pos.includes('บ.ตร.') || unit.startsWith('บ.ตร.'))  return 'บ.ตร.';
   if (pos.includes('นักบิน') || pos.includes('ครูการบิน')) return 'นักบิน';
-  if (unit && /[a-zA-Z]/.test(unit)) return 'ธุรกิจส่วนตัว';
+  if (unit && (unit.includes('ธุรกิจส่วนตัว') || /[a-zA-Z]/.test(unit))) return 'ธุรกิจส่วนตัว';
   return unit;
 }
 
