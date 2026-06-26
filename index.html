@@ -306,7 +306,7 @@ body {
 #pr-lightbox { display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center; }
 #pr-lightbox.open { display:flex; }
 .pr-lb-bg { position:absolute; inset:0; background:rgba(0,0,0,0.92); }
-.pr-lb-img { position:relative; z-index:1; max-width:95vw; max-height:90vh; object-fit:contain; border-radius:6px; user-select:none; }
+.pr-lb-img { position:relative; z-index:1; max-width:95vw; max-height:90vh; object-fit:contain; border-radius:6px; user-select:none; touch-action:none; transform-origin:center center; transition:transform 0.05s; }
 .pr-lb-close { position:absolute; top:0.75rem; right:0.75rem; z-index:3; background:rgba(255,255,255,0.18); color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:1.1rem; cursor:pointer; line-height:36px; text-align:center; }
 .pr-lb-nav { position:absolute; z-index:2; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.18); color:#fff; border:none; border-radius:50%; width:40px; height:40px; font-size:1.6rem; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
 .pr-lb-prev { left:0.75rem; }
@@ -2489,13 +2489,31 @@ function openPrLightbox(idx, container) {
     lb.querySelector('.pr-lb-prev').onclick  = () => navPrLightbox(-1);
     lb.querySelector('.pr-lb-next').onclick  = () => navPrLightbox(1);
     const img = lb.querySelector('.pr-lb-img');
-    img.addEventListener('touchstart', e => { _lbTouchX = e.touches[0].clientX; }, { passive:true });
-    img.addEventListener('touchend',   e => {
-      if (_lbTouchX === null) return;
+    let _pinchDist = null, _imgScale = 1, _imgTx = 0, _imgTy = 0;
+    function _pinchReset() { _imgScale = 1; _imgTx = 0; _imgTy = 0; img.style.transform = ''; img.style.cursor = ''; }
+    function _dist(t) { return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
+    img.addEventListener('touchstart', e => {
+      if (e.touches.length === 2) { _pinchDist = _dist(e.touches); e.preventDefault(); }
+      else if (e.touches.length === 1) { _lbTouchX = _imgScale > 1 ? null : e.touches[0].clientX; }
+    }, { passive:false });
+    img.addEventListener('touchmove', e => {
+      if (e.touches.length === 2 && _pinchDist) {
+        const newDist = _dist(e.touches);
+        _imgScale = Math.min(5, Math.max(1, _imgScale * (newDist / _pinchDist)));
+        _pinchDist = newDist;
+        img.style.transform = `scale(${_imgScale}) translate(${_imgTx}px,${_imgTy}px)`;
+        e.preventDefault();
+      }
+    }, { passive:false });
+    img.addEventListener('touchend', e => {
+      _pinchDist = null;
+      if (_imgScale <= 1) { _pinchReset(); }
+      if (_lbTouchX === null || _imgScale > 1) { _lbTouchX = null; return; }
       const dx = e.changedTouches[0].clientX - _lbTouchX;
       _lbTouchX = null;
       if (Math.abs(dx) > 40) navPrLightbox(dx < 0 ? 1 : -1);
     });
+    img.addEventListener('dblclick', () => { if (_imgScale > 1) _pinchReset(); });
   }
   _updatePrLightbox();
   lb.classList.add('open');
@@ -2522,7 +2540,11 @@ function navPrLightboxTo(idx) { _lbIdx = idx; _updatePrLightbox(); }
 
 function closePrLightbox() {
   const lb = document.getElementById('pr-lightbox');
-  if (lb) lb.classList.remove('open');
+  if (lb) {
+    lb.classList.remove('open');
+    const img = lb.querySelector('.pr-lb-img');
+    if (img) img.style.transform = '';
+  }
   document.body.style.overflow = '';
 }
 
