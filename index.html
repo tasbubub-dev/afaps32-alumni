@@ -2605,12 +2605,10 @@ async function loadPrReactions(docId) {
   } catch { return {}; }
 }
 
-function _buildReactCommentHtml(docId) {
+const _SVG_LIKE = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:3px;margin-bottom:1px"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>`;
+
+function _commentSectionHtml(docId) {
   return `
-    <div class="pr-reaction-area">
-      <div class="pr-reactions" data-id="${docId}">${_renderReactionArea(docId, _prReactionsCache[docId] || {})}</div>
-      <button class="pr-comment-toggle" onclick="togglePrComments('${docId}',this)">💬 ความคิดเห็น</button>
-    </div>
     <div class="pr-comments-section" style="display:none">
       <div class="pr-comment-list" data-id="${docId}"></div>
       <div class="pr-comment-input-row">
@@ -2620,19 +2618,36 @@ function _buildReactCommentHtml(docId) {
     </div>`;
 }
 
+function _buildReactCommentHtml(docId) {
+  return `
+    <div class="pr-reaction-area">
+      <div class="pr-reactions" data-id="${docId}">${_renderReactionArea(docId, _prReactionsCache[docId] || {})}</div>
+      <button class="pr-comment-toggle" onclick="togglePrComments('${docId}',this)">💬 ความคิดเห็น</button>
+    </div>
+    ${_commentSectionHtml(docId)}`;
+}
+
+function _buildCommentOnlyHtml(docId) {
+  return `
+    <div style="padding-top:0.4rem;margin-top:0.35rem;border-top:1px solid rgba(255,193,7,0.4);display:flex;justify-content:flex-end">
+      <button class="pr-comment-toggle" onclick="togglePrComments('${docId}',this)">💬 ความคิดเห็น</button>
+    </div>
+    ${_commentSectionHtml(docId)}`;
+}
+
 function _renderReactionArea(docId, data) {
   const uid = currentUser ? currentUser.uid : null;
   let myKey = null, myEmoji = null;
   for (const e of PR_EMOJIS) {
     if (uid && (data[e.key] || []).includes(uid)) { myKey = e.key; myEmoji = e.emoji; break; }
   }
-  // summary: top emojis + total
   const counts = PR_EMOJIS.map(e => ({ e, n:(data[e.key]||[]).length })).filter(x => x.n > 0);
   const total = counts.reduce((s,x) => s+x.n, 0);
   const topIcons = counts.sort((a,b)=>b.n-a.n).slice(0,3).map(x=>x.e.emoji).join('');
   const summary = total ? `${topIcons} ${total}` : '';
 
-  const likeLabel = myEmoji ? myEmoji : '👍 Like';
+  // ก่อนกด: SVG outline + "Like" | หลังกด: emoji สีเต็ม
+  const likeLabel = myEmoji ? myEmoji : `${_SVG_LIKE}Like`;
   const likeClass = myKey ? 'pr-like-btn reacted' : 'pr-like-btn';
 
   const pickerItems = PR_EMOJIS.map(e => {
@@ -2925,7 +2940,7 @@ function renderPrPage() {
         <div class="pr-date">🎂 วันเกิดวันนี้ · ${todayStr}</div>
         <div class="pr-title">ขอแสดงความยินดีกับผู้ที่เกิดวันนี้</div>
         <div class="pr-birthday-names">${nameList}</div>
-        ${_buildReactCommentHtml(bdDocId)}
+        ${_buildCommentOnlyHtml(bdDocId)}
       </div>`
   }
 
@@ -2947,10 +2962,7 @@ function renderPrPage() {
   el.innerHTML = '<div class="page-section-title">ประชาสัมพันธ์</div>' + birthdayHtml + prHtml;
 
   // โหลด reactions หลัง DOM พร้อม
-  const docIds = [
-    ...(bdays.length ? [bdDocId] : []),
-    ...sortedItems.filter(i => i._idx != null).map(i => _prDocId(i._idx))
-  ];
+  const docIds = sortedItems.filter(i => i._idx != null).map(i => _prDocId(i._idx));
   docIds.forEach(async docId => {
     const data = await loadPrReactions(docId);
     _prReactionsCache[docId] = data;
