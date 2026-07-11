@@ -317,10 +317,17 @@ body {
 .pr-lb-dot.active { background:#fff; }
 
 /* PR reactions & comments */
-.pr-reaction-area { display:flex; align-items:center; flex-wrap:wrap; gap:4px; padding-top:0.5rem; margin-top:0.35rem; border-top:1px solid #f5f5f5; }
-.pr-reaction-btn { display:inline-flex; align-items:center; gap:3px; background:#f5f5f5; border:1.5px solid transparent; border-radius:20px; padding:3px 8px; cursor:pointer; font-size:0.78rem; line-height:1; transition:background 0.15s; font-family:var(--font); }
-.pr-reaction-btn.active { background:#e8f0fe; border-color:#aac4f0; }
-.pr-reaction-btn span { color:#555; }
+.pr-reaction-area { display:flex; align-items:center; gap:8px; padding-top:0.5rem; margin-top:0.35rem; border-top:1px solid #f5f5f5; }
+.pr-react-wrap { position:relative; }
+.pr-like-btn { display:inline-flex; align-items:center; gap:5px; background:#f5f5f5; border:1.5px solid transparent; border-radius:20px; padding:5px 13px; cursor:pointer; font-size:0.88rem; font-family:var(--font); transition:background 0.15s; }
+.pr-like-btn.reacted { background:#e8f0fe; border-color:#aac4f0; color:#1a3a5c; font-weight:600; }
+.pr-reaction-summary { font-size:0.78rem; color:#888; flex:1; }
+.pr-emoji-popup { position:absolute; bottom:calc(100% + 10px); left:-4px; background:#fff; border-radius:50px; box-shadow:0 4px 20px rgba(0,0,0,0.22); padding:8px 14px; display:none; gap:8px; z-index:300; }
+.pr-emoji-popup.open { display:flex; }
+.pr-emoji-popup .ep-item { display:flex; flex-direction:column; align-items:center; gap:1px; }
+.pr-emoji-popup .ep-item button { font-size:1.9rem; background:none; border:none; cursor:pointer; padding:2px; border-radius:50%; transition:transform 0.12s; line-height:1.2; }
+.pr-emoji-popup .ep-item button:hover, .pr-emoji-popup .ep-item button.my-pick { transform:scale(1.35); }
+.pr-emoji-popup .ep-item span { font-size:0.6rem; color:#888; }
 .pr-comment-toggle { margin-left:auto; background:none; border:none; color:#999; font-size:0.72rem; cursor:pointer; padding:2px 0; flex-shrink:0; font-family:var(--font); }
 .pr-comments-section { padding-top:0.5rem; border-top:1px solid #f5f5f5; margin-top:0.4rem; }
 .pr-comment-item { display:flex; gap:0.4rem; margin-bottom:0.5rem; align-items:flex-start; }
@@ -2581,13 +2588,13 @@ function closePrLightbox() {
 
 // ═══ PR REACTIONS & COMMENTS ═══
 const PR_EMOJIS = [
-  { key:'like',  emoji:'👍' },
-  { key:'love',  emoji:'❤️' },
-  { key:'hug',   emoji:'🤗' },
-  { key:'laugh', emoji:'😂' },
-  { key:'cry',   emoji:'😢' },
-  { key:'sad',   emoji:'😔' },
-  { key:'angry', emoji:'😠' },
+  { key:'like',  emoji:'👍', label:'Like' },
+  { key:'love',  emoji:'❤️', label:'รัก' },
+  { key:'hug',   emoji:'🤗', label:'กอด' },
+  { key:'laugh', emoji:'😂', label:'ฮา' },
+  { key:'cry',   emoji:'😢', label:'ร้องไห้' },
+  { key:'sad',   emoji:'😔', label:'เสียใจ' },
+  { key:'angry', emoji:'😠', label:'โกรธ' },
 ];
 let _prReactionsCache = {};
 
@@ -2598,31 +2605,88 @@ async function loadPrReactions(docId) {
   } catch { return {}; }
 }
 
-function _renderReactionBtns(docId, data) {
-  const uid = currentUser ? currentUser.uid : null;
-  return PR_EMOJIS.map(e => {
-    const arr = data[e.key] || [];
-    const active = uid && arr.includes(uid) ? ' active' : '';
-    const cnt = arr.length ? `<span>${arr.length}</span>` : '';
-    return `<button class="pr-reaction-btn${active}" onclick="togglePrReaction('${docId}','${e.key}')">${e.emoji}${cnt}</button>`;
-  }).join('');
+function _buildReactCommentHtml(docId) {
+  return `
+    <div class="pr-reaction-area">
+      <div class="pr-reactions" data-id="${docId}">${_renderReactionArea(docId, _prReactionsCache[docId] || {})}</div>
+      <button class="pr-comment-toggle" onclick="togglePrComments('${docId}',this)">💬 ความคิดเห็น</button>
+    </div>
+    <div class="pr-comments-section" style="display:none">
+      <div class="pr-comment-list" data-id="${docId}"></div>
+      <div class="pr-comment-input-row">
+        <input type="text" placeholder="เขียนความคิดเห็น..." onkeydown="if(event.key==='Enter')submitPrComment('${docId}',this)">
+        <button class="pr-comment-send" onclick="submitPrComment('${docId}',this.previousElementSibling)">➤</button>
+      </div>
+    </div>`;
 }
 
-async function togglePrReaction(docId, key) {
+function _renderReactionArea(docId, data) {
+  const uid = currentUser ? currentUser.uid : null;
+  let myKey = null, myEmoji = null;
+  for (const e of PR_EMOJIS) {
+    if (uid && (data[e.key] || []).includes(uid)) { myKey = e.key; myEmoji = e.emoji; break; }
+  }
+  // summary: top emojis + total
+  const counts = PR_EMOJIS.map(e => ({ e, n:(data[e.key]||[]).length })).filter(x => x.n > 0);
+  const total = counts.reduce((s,x) => s+x.n, 0);
+  const topIcons = counts.sort((a,b)=>b.n-a.n).slice(0,3).map(x=>x.e.emoji).join('');
+  const summary = total ? `${topIcons} ${total}` : '';
+
+  const likeLabel = myEmoji ? myEmoji : '👍 Like';
+  const likeClass = myKey ? 'pr-like-btn reacted' : 'pr-like-btn';
+
+  const pickerItems = PR_EMOJIS.map(e => {
+    const isMyPick = e.key === myKey ? ' my-pick' : '';
+    const cnt = (data[e.key]||[]).length;
+    return `<span class="ep-item">
+      <button class="${isMyPick}" onclick="pickPrReaction('${docId}','${e.key}')">${e.emoji}</button>
+      <span>${cnt || ''}</span>
+    </span>`;
+  }).join('');
+
+  return `<span class="pr-react-wrap">
+    <button class="${likeClass}" onclick="toggleEmojiPicker('${docId}',event)">${likeLabel}</button>
+    <div class="pr-emoji-popup" id="ep_${docId}">${pickerItems}</div>
+  </span>
+  <span class="pr-reaction-summary">${summary}</span>`;
+}
+
+function toggleEmojiPicker(docId, e) {
+  e.stopPropagation();
+  const popup = document.getElementById('ep_' + docId);
+  if (!popup) return;
+  const isOpen = popup.classList.contains('open');
+  document.querySelectorAll('.pr-emoji-popup.open').forEach(p => p.classList.remove('open'));
+  if (!isOpen) popup.classList.add('open');
+}
+document.addEventListener('click', () => {
+  document.querySelectorAll('.pr-emoji-popup.open').forEach(p => p.classList.remove('open'));
+});
+
+async function pickPrReaction(docId, key) {
   if (!currentUser) { showToast('กรุณาเข้าสู่ระบบก่อน'); return; }
+  document.getElementById('ep_' + docId)?.classList.remove('open');
   const uid = currentUser.uid;
   const ref = db.collection('prReactions').doc(docId);
   const snap = await ref.get();
-  const arr = (snap.exists ? snap.data()[key] : null) || [];
-  const update = arr.includes(uid)
-    ? { [key]: firebase.firestore.FieldValue.arrayRemove(uid) }
-    : { [key]: firebase.firestore.FieldValue.arrayUnion(uid) };
-  await ref.set(update, { merge:true });
-  const newArr = arr.includes(uid) ? arr.filter(x => x !== uid) : [...arr, uid];
+  const data = snap.exists ? snap.data() : {};
+  const alreadyThis = (data[key] || []).includes(uid);
+  const updates = {};
+  // ถอด reaction เดิมออก
+  for (const e of PR_EMOJIS) {
+    if ((data[e.key]||[]).includes(uid)) updates[e.key] = firebase.firestore.FieldValue.arrayRemove(uid);
+  }
+  // toggle: ถ้ากดซ้ำ key เดิม = ยกเลิก, ถ้ากด key ใหม่ = เพิ่ม
+  if (!alreadyThis) updates[key] = firebase.firestore.FieldValue.arrayUnion(uid);
+  await ref.set(updates, { merge:true });
+  // update cache
   if (!_prReactionsCache[docId]) _prReactionsCache[docId] = {};
-  _prReactionsCache[docId][key] = newArr;
+  for (const e of PR_EMOJIS) {
+    _prReactionsCache[docId][e.key] = ((data[e.key]||[]).filter(x => x !== uid));
+  }
+  if (!alreadyThis) _prReactionsCache[docId][key] = [...(_prReactionsCache[docId][key]||[]), uid];
   const row = document.querySelector(`.pr-reactions[data-id="${docId}"]`);
-  if (row) row.innerHTML = _renderReactionBtns(docId, _prReactionsCache[docId]);
+  if (row) row.innerHTML = _renderReactionArea(docId, _prReactionsCache[docId]);
 }
 
 function togglePrComments(docId, btn) {
@@ -2849,6 +2913,7 @@ function renderPrPage() {
   // Birthday card อัตโนมัติ
   const bdays = getTodayBirthdays();
   let birthdayHtml = '';
+  const bdDocId = 'birthday_' + new Date().toISOString().slice(0,10);
   if (bdays.length > 0) {
     const todayStr = new Date().toLocaleDateString('th-TH', { day:'numeric', month:'long', year:'numeric' });
     const nameList = bdays.map(m => {
@@ -2860,32 +2925,21 @@ function renderPrPage() {
         <div class="pr-date">🎂 วันเกิดวันนี้ · ${todayStr}</div>
         <div class="pr-title">ขอแสดงความยินดีกับผู้ที่เกิดวันนี้</div>
         <div class="pr-birthday-names">${nameList}</div>
-      </div>`;
+        ${_buildReactCommentHtml(bdDocId)}
+      </div>`
   }
 
   const sortedItems = [..._prItems].sort((a, b) => parsePrDate(b.date) - parsePrDate(a.date));
   const prHtml = sortedItems.length
     ? sortedItems.map(item => {
         const docId = item._idx != null ? _prDocId(item._idx) : null;
-        const reactHtml = docId ? `
-          <div class="pr-reaction-area">
-            <div class="pr-reactions" data-id="${docId}">${_renderReactionBtns(docId, _prReactionsCache[docId] || {})}</div>
-            <button class="pr-comment-toggle" onclick="togglePrComments('${docId}',this)">💬 ความคิดเห็น</button>
-          </div>
-          <div class="pr-comments-section" style="display:none">
-            <div class="pr-comment-list" data-id="${docId}"></div>
-            <div class="pr-comment-input-row">
-              <input type="text" placeholder="เขียนความคิดเห็น..." onkeydown="if(event.key==='Enter')submitPrComment('${docId}',this)">
-              <button class="pr-comment-send" onclick="submitPrComment('${docId}',this.previousElementSibling)">➤</button>
-            </div>
-          </div>` : '';
         return `
         <div class="pr-card">
           ${item.date  ? `<div class="pr-date">${escHtml(item.date)}</div>`  : ''}
           ${item.title ? `<div class="pr-title">${escHtml(item.title)}</div>` : ''}
           ${item.body  ? `<div class="pr-body">${escHtml(item.body).replace(/\n/g,'<br>')}</div>` : ''}
           ${renderPrImages(item.images)}
-          ${reactHtml}
+          ${docId ? _buildReactCommentHtml(docId) : ''}
         </div>`;
       }).join('')
     : '<div style="text-align:center;color:#aaa;padding:2rem;font-size:0.9rem">ยังไม่มีประกาศ</div>';
@@ -2893,13 +2947,15 @@ function renderPrPage() {
   el.innerHTML = '<div class="page-section-title">ประชาสัมพันธ์</div>' + birthdayHtml + prHtml;
 
   // โหลด reactions หลัง DOM พร้อม
-  sortedItems.forEach(async item => {
-    if (item._idx == null) return;
-    const docId = _prDocId(item._idx);
+  const docIds = [
+    ...(bdays.length ? [bdDocId] : []),
+    ...sortedItems.filter(i => i._idx != null).map(i => _prDocId(i._idx))
+  ];
+  docIds.forEach(async docId => {
     const data = await loadPrReactions(docId);
     _prReactionsCache[docId] = data;
     const row = el.querySelector(`.pr-reactions[data-id="${docId}"]`);
-    if (row) row.innerHTML = _renderReactionBtns(docId, data);
+    if (row) row.innerHTML = _renderReactionArea(docId, data);
   });
 }
 
