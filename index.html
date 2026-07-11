@@ -2723,13 +2723,17 @@ async function _loadPrComments(docId, cardEl) {
   try {
     const snaps = await db.collection('prComments')
       .where('itemId','==',docId)
-      .orderBy('createdAt','asc')
       .get();
-    if (!snaps.docs.length) {
+    const docs = [...snaps.docs].sort((a,b) => {
+      const ta = a.data().createdAt?.toMillis?.() || 0;
+      const tb = b.data().createdAt?.toMillis?.() || 0;
+      return ta - tb;
+    });
+    if (!docs.length) {
       listEl.innerHTML = '<div style="color:#ccc;font-size:0.75rem;text-align:center;padding:0.4rem">ยังไม่มีความคิดเห็น</div>';
       return;
     }
-    listEl.innerHTML = snaps.docs.map(d => {
+    listEl.innerHTML = docs.map(d => {
       const c = d.data();
       const ts = c.createdAt?.toDate ? c.createdAt.toDate() : new Date();
       const timeStr = ts.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) + ' ' +
