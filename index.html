@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>ทำเนียบรุ่น นรต.48</title>
+<title>ทำเนียบรุ่น นตท.32</title>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -831,6 +831,22 @@ body {
   </div>
 </div>
 
+<div id="pin-lock-screen" style="display:none;min-height:100vh;background:var(--theme);flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;position:relative;overflow-x:hidden">
+  <img class="login-logo" src="logoafaps.png" alt="โลโก้" style="width:30vw;height:30vw;max-width:120px;max-height:120px" onerror="this.style.display='none'">
+  <div class="login-card" style="max-width:340px">
+    <h2>ปลดล็อกด้วย PIN</h2>
+    <div class="form-group">
+      <label>PIN</label>
+      <input type="password" id="pin-input" placeholder="••••" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+    </div>
+    <button class="btn-login" id="btn-pin-unlock">ปลดล็อก</button>
+    <p class="login-err" id="pin-err"></p>
+    <p style="text-align:center;margin-top:0.6rem">
+      <a href="javascript:void(0)" style="color:var(--theme);font-size:0.82rem;text-decoration:underline" onclick="doLogout()">เข้าสู่ระบบด้วยเบอร์โทร/รหัสผ่านแทน</a>
+    </p>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app">
 
@@ -888,6 +904,7 @@ body {
   <div class="acct-menu" id="acct-menu">
     <button id="acct-menu-admin" style="display:none" onclick="switchTab('admin'); closeAccountMenu()">⚙️ จัดการระบบ (Admin)</button>
     <button onclick="switchTab('changepass'); closeAccountMenu()">🔒 เปลี่ยนรหัสผ่าน</button>
+    <button onclick="switchTab('pinsetup'); closeAccountMenu()">🔢 ตั้งรหัส PIN ปลดล็อกด่วน</button>
     <button onclick="doLogout(); closeAccountMenu()">🚪 ออกจากระบบ</button>
   </div>
 
@@ -978,6 +995,30 @@ body {
       </div>
       <button class="btn-login" onclick="doChangePassword()" style="margin-top:0">บันทึกรหัสผ่านใหม่</button>
       <p class="login-err" id="cp-err"></p>
+    </div>
+  </div>
+
+  <!-- PIN Lock Setup Page -->
+  <div class="page-changepass" id="page-pinsetup">
+    <button class="back-btn" onclick="backToProfile()">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      กลับ
+    </button>
+    <div class="change-card">
+      <h3>PIN ปลดล็อกด่วน</h3>
+      <p style="font-size:0.78rem;color:#888;margin-bottom:0.5rem" id="pin-setup-status">สถานะ: ยังไม่ได้ตั้งค่า</p>
+      <p style="font-size:0.78rem;color:#888;margin-bottom:1rem">ตั้ง PIN 4-6 หลัก เพื่อปลดล็อกแอปอย่างรวดเร็วบนเครื่องนี้ โดยไม่ต้องกรอกเบอร์โทร/รหัสผ่านซ้ำ (ใช้ได้เฉพาะเครื่องนี้เท่านั้น)</p>
+      <div class="form-group">
+        <label>ตั้ง PIN ใหม่ (4-6 หลัก)</label>
+        <input type="password" id="pin-setup-new" placeholder="เช่น 1234" maxlength="6" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <div class="form-group">
+        <label>ยืนยัน PIN</label>
+        <input type="password" id="pin-setup-confirm" placeholder="กรอก PIN อีกครั้ง" maxlength="6" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <button class="btn-login" onclick="savePinSetup()" style="margin-top:0">บันทึก PIN</button>
+      <button class="btn-login" id="btn-pin-disable" style="background:#eee;color:#555;margin-top:0.5rem;display:none" onclick="disablePinSetup()">ปิดใช้งาน PIN</button>
+      <p class="login-err" id="pin-setup-err"></p>
     </div>
   </div>
 
@@ -1835,22 +1876,99 @@ async function loadMemberEditorMap() {
   } catch(e) { /* silently fail */ }
 }
 
+let _pinUnlockedForSession = false;
+
+function _pinStorageKey(uid) { return 'applock_pin_' + uid; }
+function hasPinSet(uid) { return !!localStorage.getItem(_pinStorageKey(uid)); }
+async function _sha256Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function _enterApp() {
+  document.getElementById('pin-lock-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  loadUserProfile();
+  loadMembers();
+  loadMemberEditorMap();
+  loadAppsScriptConfig();
+  startContentConfig();
+  switchTab('pr');
+}
+
+function showPinLockScreen() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('pin-input').value = '';
+  document.getElementById('pin-err').textContent = '';
+  document.getElementById('pin-lock-screen').style.display = 'flex';
+  setTimeout(() => document.getElementById('pin-input').focus(), 50);
+}
+
+async function doPinUnlock() {
+  const pin = document.getElementById('pin-input').value.trim();
+  const errEl = document.getElementById('pin-err');
+  errEl.textContent = '';
+  if (!/^\d{4,6}$/.test(pin)) { errEl.textContent = 'PIN ต้องเป็นตัวเลข 4-6 หลัก'; return; }
+  const hash = await _sha256Hex(pin);
+  if (hash === localStorage.getItem(_pinStorageKey(currentUser.uid))) {
+    _pinUnlockedForSession = true;
+    _enterApp();
+  } else {
+    errEl.textContent = 'PIN ไม่ถูกต้อง';
+    document.getElementById('pin-input').value = '';
+    document.getElementById('pin-input').focus();
+  }
+}
+document.getElementById('btn-pin-unlock').addEventListener('click', doPinUnlock);
+document.getElementById('pin-input').addEventListener('keypress', e => { if(e.key==='Enter') doPinUnlock(); });
+
+function loadPinSetupPage() {
+  document.getElementById('pin-setup-new').value = '';
+  document.getElementById('pin-setup-confirm').value = '';
+  document.getElementById('pin-setup-err').textContent = '';
+  const has = hasPinSet(currentUser.uid);
+  document.getElementById('pin-setup-status').textContent = has ? 'สถานะ: เปิดใช้งานอยู่บนเครื่องนี้' : 'สถานะ: ยังไม่ได้ตั้งค่า';
+  document.getElementById('btn-pin-disable').style.display = has ? 'block' : 'none';
+}
+
+async function savePinSetup() {
+  const p1 = document.getElementById('pin-setup-new').value.trim();
+  const p2 = document.getElementById('pin-setup-confirm').value.trim();
+  const errEl = document.getElementById('pin-setup-err');
+  errEl.textContent = '';
+  if (!/^\d{4,6}$/.test(p1)) { errEl.textContent = 'PIN ต้องเป็นตัวเลข 4-6 หลัก'; return; }
+  if (p1 !== p2) { errEl.textContent = 'PIN ไม่ตรงกัน'; return; }
+  const hash = await _sha256Hex(p1);
+  localStorage.setItem(_pinStorageKey(currentUser.uid), hash);
+  _pinUnlockedForSession = true;
+  showToast('ตั้งรหัส PIN สำเร็จ ✓');
+  loadPinSetupPage();
+}
+
+function disablePinSetup() {
+  if (!confirm('ปิดใช้งาน PIN ปลดล็อกด่วนบนเครื่องนี้?')) return;
+  localStorage.removeItem(_pinStorageKey(currentUser.uid));
+  showToast('ปิดใช้งาน PIN แล้ว');
+  loadPinSetupPage();
+}
+
 auth.onAuthStateChanged(user => {
   if (user) {
     currentUser = user;
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    loadUserProfile();
-    loadMembers();
-    loadMemberEditorMap();
-    loadAppsScriptConfig();
-    startContentConfig();
-    switchTab('pr');
+    if (hasPinSet(user.uid) && !_pinUnlockedForSession) {
+      showPinLockScreen();
+    } else {
+      _enterApp();
+    }
   } else {
+    document.getElementById('pin-lock-screen').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
     currentUser = null;
     currentUserProfile = null;
+    _pinUnlockedForSession = false;
     const loginBtn = document.getElementById('btn-do-login');
     if (loginBtn) { loginBtn.textContent = 'เข้าสู่ระบบ'; loginBtn.disabled = false; }
   }
@@ -1977,10 +2095,12 @@ async function doLogin() {
 
   try {
     await auth.signInWithEmailAndPassword(vEmail, pass);
+    _pinUnlockedForSession = true;
   } catch(signInErr) {
     // ถ้าไม่มีบัญชี → สร้างใหม่อัตโนมัติด้วยรหัสผ่านเริ่มต้น 123456
     try {
       await auth.createUserWithEmailAndPassword(vEmail, '123456');
+      _pinUnlockedForSession = true;
       // createUserWithEmailAndPassword auto-signs in — onAuthStateChanged จะจัดการต่อ
     } catch(createErr) {
       btn.textContent = 'เข้าสู่ระบบ';
@@ -2607,6 +2727,10 @@ function switchTab(tab) {
   } else if (tab === 'changepass') {
     document.getElementById('page-changepass').style.display = 'block';
     document.getElementById('page-changepass').classList.add('active');
+  } else if (tab === 'pinsetup') {
+    document.getElementById('page-pinsetup').style.display = 'block';
+    document.getElementById('page-pinsetup').classList.add('active');
+    loadPinSetupPage();
   } else if (tab === 'admin') {
     showSimpleHeader('จัดการระบบ');
     show('page-admin');
