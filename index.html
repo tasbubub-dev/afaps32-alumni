@@ -811,6 +811,23 @@ body {
     </div>
     <button class="btn-login" id="btn-do-login">เข้าสู่ระบบ</button>
     <p class="login-err" id="login-err"></p>
+    <p style="text-align:center;margin-top:0.6rem">
+      <a href="javascript:void(0)" id="forgot-pw-link" style="color:var(--theme);font-size:0.82rem;text-decoration:underline" onclick="openForgotPassword()">ลืมรหัสผ่าน?</a>
+    </p>
+  </div>
+</div>
+
+<div class="modal-overlay" id="forgot-pw-overlay" style="align-items:center" onclick="if(event.target===this) closeForgotPassword()">
+  <div class="login-card" style="max-width:340px;margin:0 1rem">
+    <h2>ลืมรหัสผ่าน</h2>
+    <div class="form-group">
+      <label>เบอร์โทรศัพท์ (10 หลัก)</label>
+      <input type="tel" id="fp-phone" placeholder="0XXXXXXXXX" maxlength="10" pattern="[0-9]{10}" inputmode="numeric" autocomplete="tel">
+    </div>
+    <button class="btn-login" id="btn-do-forgot-pw">ส่งอีเมลรีเซ็ตรหัสผ่าน</button>
+    <button class="btn-login" style="background:#eee;color:#555;margin-top:0.5rem" onclick="closeForgotPassword()">ยกเลิก</button>
+    <p class="login-err" id="fp-err"></p>
+    <p id="fp-success" style="color:#1a8a3d;font-size:0.8rem;text-align:center;margin-top:0.5rem;display:none"></p>
   </div>
 </div>
 
@@ -1982,6 +1999,75 @@ async function doLogin() {
 async function doLogout() {
   await auth.signOut();
 }
+
+// ═══ FORGOT PASSWORD ═══
+function openForgotPassword() {
+  document.getElementById('fp-phone').value = '';
+  document.getElementById('fp-err').textContent = '';
+  document.getElementById('fp-success').style.display = 'none';
+  document.getElementById('fp-success').textContent = '';
+  document.getElementById('forgot-pw-overlay').classList.add('open');
+}
+function closeForgotPassword() {
+  document.getElementById('forgot-pw-overlay').classList.remove('open');
+}
+
+async function doForgotPassword() {
+  const phone = normalizePhone(document.getElementById('fp-phone').value);
+  const errEl = document.getElementById('fp-err');
+  const okEl  = document.getElementById('fp-success');
+  const btn   = document.getElementById('btn-do-forgot-pw');
+  errEl.textContent = '';
+  okEl.style.display = 'none';
+  if (!phone) { errEl.textContent = 'กรุณากรอกเบอร์โทรศัพท์'; return; }
+  if (!/^\d{10}$/.test(phone)) { errEl.textContent = 'เบอร์โทรต้องเป็นตัวเลข 10 หลัก'; return; }
+
+  btn.textContent = 'กำลังตรวจสอบ...';
+  btn.disabled = true;
+  await _phoneEmailMapReady;
+
+  let vEmail;
+  if (_validPhones.has(phone)) {
+    vEmail = phoneEmailMap[phone] || phoneToEmail(phone);
+  } else {
+    const check = await checkPhoneInFirestore(phone);
+    if (check.permissionDenied) {
+      errEl.textContent = 'ไม่สามารถตรวจสอบสิทธิ์ได้ กรุณาติดต่อผู้ดูแลระบบ';
+      btn.textContent = 'ส่งอีเมลรีเซ็ตรหัสผ่าน'; btn.disabled = false; return;
+    }
+    if (!check.found) {
+      errEl.textContent = 'ไม่พบเบอร์โทรศัพท์นี้ในระบบ';
+      btn.textContent = 'ส่งอีเมลรีเซ็ตรหัสผ่าน'; btn.disabled = false; return;
+    }
+    vEmail = check.email || phoneToEmail(phone);
+    _validPhones.add(phone);
+    if (check.email) phoneEmailMap[phone] = check.email;
+  }
+
+  if (vEmail.endsWith('@tat32.app')) {
+    errEl.textContent = 'บัญชีนี้ยังไม่ได้ผูกอีเมลจริงไว้ในระบบ ไม่สามารถส่งอีเมลรีเซ็ตรหัสผ่านได้ กรุณาติดต่อผู้ดูแลระบบเพื่อขอรีเซ็ตรหัสผ่าน';
+    btn.textContent = 'ส่งอีเมลรีเซ็ตรหัสผ่าน'; btn.disabled = false; return;
+  }
+
+  btn.textContent = 'กำลังส่งอีเมล...';
+  try {
+    await auth.sendPasswordResetEmail(vEmail);
+    okEl.textContent = 'ส่งอีเมลรีเซ็ตรหัสผ่านไปที่ ' + vEmail + ' แล้ว กรุณาตรวจสอบกล่องจดหมาย (รวมถึงถังขยะ/สแปม)';
+    okEl.style.display = 'block';
+  } catch(e) {
+    if (e.code === 'auth/user-not-found') {
+      errEl.textContent = 'บัญชีนี้ยังไม่เคยเข้าสู่ระบบมาก่อน กรุณาเข้าสู่ระบบครั้งแรกด้วยรหัสผ่านเริ่มต้น 123456';
+    } else if (e.code === 'auth/too-many-requests') {
+      errEl.textContent = 'ส่งคำขอบ่อยเกินไป กรุณาลองใหม่ภายหลัง';
+    } else {
+      errEl.textContent = 'เกิดข้อผิดพลาด: ' + (e.message || '');
+    }
+  }
+  btn.textContent = 'ส่งอีเมลรีเซ็ตรหัสผ่าน';
+  btn.disabled = false;
+}
+document.getElementById('btn-do-forgot-pw').addEventListener('click', doForgotPassword);
+document.getElementById('fp-phone').addEventListener('keypress', e => { if(e.key==='Enter') doForgotPassword(); });
 
 // ═══ LOAD MEMBERS + OVERRIDES ═══
 function _applyOverrides(base, overrides) {
