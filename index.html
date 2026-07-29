@@ -2584,7 +2584,7 @@ function renderGrid() {
     <div class="member-card" onclick="openDetail('${escHtml(m.id)}')">
       <div class="member-photo-wrap">
         ${m.photoUrl
-          ? `<img src="${m.photoUrl}" alt="${escHtml(m.fullname)}" style="${_normBranch(m.branch)==='ทบ'?'object-position:top':''}" onerror="this.src=BRANCH_AVATAR['${_normBranch(m.branch)}']||BRANCH_AVATAR['all']">`
+          ? `<img src="${m.photoUrl}" alt="${escHtml(m.fullname)}" style="${(_normBranch(m.branch)==='ทบ'||_normBranch(m.branch)==='ทร')?'object-position:top':''}" onerror="this.src=BRANCH_AVATAR['${_normBranch(m.branch)}']||BRANCH_AVATAR['all']">`
           : `<img src="${BRANCH_AVATAR[_normBranch(m.branch)] || BRANCH_AVATAR['all']}" alt="${escHtml(m.fullname)}">`}
       </div>
       <div class="member-info">
@@ -2629,7 +2629,7 @@ function openDetail(id) {
   const photoWrap = document.getElementById('detail-photo-wrap');
   const _defAvatar = BRANCH_AVATAR[_normBranch(m.branch)] || BRANCH_AVATAR['all'];
   photoWrap.innerHTML = m.photoUrl
-    ? `<img class="modal-photo" src="${m.photoUrl}" alt="${escHtml(m.fullname)}" style="${_normBranch(m.branch)==='ทบ'?'object-position:top':''}" onerror="this.src='${_defAvatar}'">`
+    ? `<img class="modal-photo" src="${m.photoUrl}" alt="${escHtml(m.fullname)}" style="${(_normBranch(m.branch)==='ทบ'||_normBranch(m.branch)==='ทร')?'object-position:top':''}" onerror="this.src='${_defAvatar}'">`
     : `<img class="modal-photo" src="${_defAvatar}" alt="${escHtml(m.fullname)}">`;
 
   document.getElementById('detail-name').textContent = m.fullname;
@@ -3966,7 +3966,6 @@ async function handleExcelFile(input) {
       seq:      _excelCol(headers, ['ลำดับ','seq','#','no.']),
       rank:     _excelCol(headers, ['ยศ','rank']),
       fullname: _excelCol(headers, ['ชื่อ-นาม','ชื่อนาม','fullname','ชื่อ สกุล','ชื่อ-สกุล','ชื่อ']),
-      lastname: _excelCol(headers, ['นามสกุล','สกุล','lastname','surname']),
       nickname: _excelCol(headers, ['ชื่อเล่น','nickname']),
       branch:   _excelCol(headers, ['เหล่า','branch']),
       position: _excelCol(headers, ['ตำแหน่ง','position']),
@@ -3978,7 +3977,7 @@ async function handleExcelFile(input) {
       business: _excelCol(headers, ['ธุรกิจ','business','อาชีพ']),
     };
     if (cm.phone1 === -1) cm.phone1 = _excelCol(headers, ['เบอร์โทร','โทร','phone','tel']);
-    var lbl = {seq:'ลำดับ',rank:'ยศ',fullname:'ชื่อ',lastname:'นามสกุล',nickname:'ชื่อเล่น',branch:'เหล่า',position:'ตำแหน่ง',unit:'หน่วย',phone1:'เบอร์โทร1',phone2:'เบอร์โทร2',email:'อีเมล์',birthday:'วันเดือนปีเกิด',business:'ธุรกิจ',id:'ลำดับที่จะกำหนด'};
+    var lbl = {seq:'ลำดับ',rank:'ยศ',fullname:'ชื่อ-นามสกุล',nickname:'ชื่อเล่น',branch:'เหล่า',position:'ตำแหน่ง',unit:'หน่วย',phone1:'เบอร์โทร1',phone2:'เบอร์โทร2',email:'อีเมล์',birthday:'วันเดือนปีเกิด',business:'ธุรกิจ',id:'ลำดับที่จะกำหนด'};
     var mapHtml = '<strong>คอลัมน์ที่ตรวจพบ:</strong><br>';
     Object.keys(cm).forEach(function(f){ if (cm[f]>=0) mapHtml += '<span style="color:#1a3a5c">▪ '+lbl[f]+'</span> ← <code>'+headers[cm[f]]+'</code>&nbsp;&nbsp;'; });
     mapHtml += '<br><span style="color:#a05a00">⚠ ลำดับจะกำหนดให้อัตโนมัติต่อจากข้อมูลล่าสุดในระบบ เรียงตามลำดับแถวในไฟล์ (ไม่ใช้ค่าในคอลัมน์ "ลำดับ" ของไฟล์)</span>';
@@ -4005,9 +4004,7 @@ async function handleExcelFile(input) {
     var skippedRows = [];
     for (var i = 1; i < rows.length; i++) {
       var r = rows[i];
-      var firstPart = cm.fullname>=0 ? (r[cm.fullname]||'').toString().trim() : '';
-      var lastPart  = cm.lastname>=0 ? (r[cm.lastname]||'').toString().trim() : '';
-      var fn = lastPart ? (firstPart + '  ' + lastPart) : firstPart;
+      var fn = cm.fullname>=0 ? (r[cm.fullname]||'').toString().trim() : '';
       if (!fn) { skippedRows.push(i + 1); continue; }
       seqCounter++;
       var seq = String(maxId + seqCounter);
