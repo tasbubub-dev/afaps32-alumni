@@ -1546,7 +1546,7 @@ function json(obj) {
         <label>ชื่อเล่น</label>
         <input id="me-nickname" type="text" placeholder="ชื่อเล่น">
         <label>วัน/เดือน/ปีเกิด</label>
-        <input id="me-birthday" type="text" placeholder="เช่น 15/03/2510">
+        <input id="me-birthday" type="text" placeholder="เช่น 15 มีนาคม 2510">
         <label>ตำแหน่ง</label>
         <input id="me-position" type="text" placeholder="ตำแหน่ง">
         <label>หน่วยงาน</label>
@@ -3692,7 +3692,7 @@ function openMemberEdit(memberId, mode) {
   photoSection.style.display = 'block';
   const preview = document.getElementById('me-photo-preview');
   if (m.photoUrl) {
-    preview.innerHTML = `<img src="${m.photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px">`;
+    preview.innerHTML = `<img src="${m.photoUrl}" style="width:100%;height:100%;object-fit:cover;object-position:top;border-radius:12px">`;
   } else {
     preview.innerHTML = '👤';
   }
@@ -3734,7 +3734,7 @@ async function handleMemberPhotoUpload(event) {
   try {
     pendingPhotoDataUrl = await compressImage(file, 600, 0.82);
     const preview = document.getElementById('me-photo-preview');
-    preview.innerHTML = `<img src="${pendingPhotoDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px">`;
+    preview.innerHTML = `<img src="${pendingPhotoDataUrl}" style="width:100%;height:100%;object-fit:cover;object-position:top;border-radius:12px">`;
   } catch(e) {
     showToast('โหลดรูปไม่ได้: ' + e.message);
   }
