@@ -4379,26 +4379,30 @@ function normalizeThaiBirthday(raw) {
   }
   let isNamedMonth = false;
   if (!isoNum && !num) {
-    const yearMatch = s.match(/(\d{4})/);
-    if (yearMatch) year = parseInt(yearMatch[0], 10);
-    const rest = yearMatch ? (s.slice(0, yearMatch.index) + s.slice(yearMatch.index + yearMatch[0].length)) : s;
-    const restLower = rest.toLowerCase();
+    const lower = s.toLowerCase();
     for (let i = 0; i < 12; i++) {
       const enShort = _EN_MONTHS[i].slice(0, 3);
-      if (rest.includes(_THAI_MONTHS_FULL[i]) || rest.includes(_THAI_MONTHS_SHORT[i]) ||
-          new RegExp('\\b' + _EN_MONTHS[i] + '\\b').test(restLower) ||
-          new RegExp('\\b' + enShort + '\\b').test(restLower)) {
+      if (s.includes(_THAI_MONTHS_FULL[i]) || s.includes(_THAI_MONTHS_SHORT[i]) ||
+          new RegExp('\\b' + _EN_MONTHS[i] + '\\b').test(lower) ||
+          new RegExp('\\b' + enShort + '\\b').test(lower)) {
         month = i + 1; isNamedMonth = true; break;
       }
     }
-    const dayMatch = rest.match(/(\d{1,2})/);
-    if (dayMatch) day = parseInt(dayMatch[1], 10);
+    // วันที่มักอยู่ก่อนปีเสมอในทุกรูปแบบ (แม้แต่ "March 17, 2514" → วันก็ยังมาก่อนปี)
+    // จึงดึงตัวเลขทั้งหมดในข้อความ แล้วถือว่าตัวแรก=วัน ตัวสุดท้าย=ปี รองรับปีแบบย่อ 2 หลักติดกับเดือนด้วย เช่น "30 ส.ค.14"
+    const nums = s.match(/\d{1,4}/g) || [];
+    if (nums.length >= 2) {
+      day = parseInt(nums[0], 10);
+      year = parseInt(nums[nums.length - 1], 10);
+    }
   }
 
   if (!day || !month || !year || month < 1 || month > 12 || day < 1 || day > 31) return null;
-  // มีชื่อเดือน (ไทยหรืออังกฤษ) ถือว่าปีที่พบเป็น พ.ศ. อยู่แล้วเสมอ ไม่แปลง ค.ศ.→พ.ศ.
+  // ปีแบบย่อ 2 หลัก (เช่น "14") ถือว่าเป็น พ.ศ. 25XX เสมอ
+  // มีชื่อเดือน (ไทยหรืออังกฤษ) ถือว่าปีที่พบเป็น พ.ศ. อยู่แล้ว ไม่แปลง ค.ศ.→พ.ศ.
   // แปลงเฉพาะกรณีวันที่เป็นตัวเลขล้วน (ไม่มีชื่อเดือน) ที่ปีน้อยกว่า 2400
-  if (!isNamedMonth && year < 2400) year += 543;
+  if (year < 100) year += 2500;
+  else if (!isNamedMonth && year < 2400) year += 543;
   return day + ' ' + _THAI_MONTHS_FULL[month - 1] + ' ' + year;
 }
 
