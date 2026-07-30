@@ -924,6 +924,7 @@ body {
     <button id="acct-menu-admin" style="display:none" onclick="switchTab('admin'); closeAccountMenu()">⚙️ จัดการระบบ (Admin)</button>
     <button onclick="switchTab('changepass'); closeAccountMenu()">🔒 เปลี่ยนรหัสผ่าน</button>
     <button onclick="switchTab('pinsetup'); closeAccountMenu()">🔢 ตั้งรหัส PIN ปลดล็อกด่วน</button>
+    <button id="acct-menu-install" style="display:none" onclick="installApp(); closeAccountMenu()">📲 ติดตั้งแอปลงหน้าจอโฮม</button>
     <button onclick="doLogout(); closeAccountMenu()">🚪 ออกจากระบบ</button>
   </div>
 
@@ -1597,6 +1598,28 @@ function json(obj) {
 <div class="toast" id="toast"></div>
 
 <script>
+// ═══ PWA INSTALL PROMPT (Android/Chrome เท่านั้น — iOS Safari ไม่รองรับ) ═══
+let _deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  var btn = document.getElementById('acct-menu-install');
+  if (btn) btn.style.display = 'block';
+});
+window.addEventListener('appinstalled', function() {
+  _deferredInstallPrompt = null;
+  var btn = document.getElementById('acct-menu-install');
+  if (btn) btn.style.display = 'none';
+});
+async function installApp() {
+  if (!_deferredInstallPrompt) return;
+  _deferredInstallPrompt.prompt();
+  await _deferredInstallPrompt.userChoice;
+  _deferredInstallPrompt = null;
+  var btn = document.getElementById('acct-menu-install');
+  if (btn) btn.style.display = 'none';
+}
+
 // ═══ CONFIG ═══
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD8hKvQDEi9BrLwzEV9TryQPPlbiAtVjeQ",
