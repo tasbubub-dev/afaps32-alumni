@@ -96,9 +96,11 @@ body {
 }
 .header-credit {
   font-size:0.62rem; color:rgba(255,255,255,0.38);
-  text-align:right; letter-spacing:0.01em;
+  display:flex; justify-content:space-between; align-items:baseline;
+  letter-spacing:0.01em;
   padding:0.22rem 0 0.18rem;
 }
+.header-stats { color:rgba(255,255,255,0.55); }
 #dir-sticky { position:sticky; top:0; z-index:100; }
 #simple-header { position:sticky; top:0; z-index:100; }
 /* Unit filter custom dropdown */
@@ -451,6 +453,17 @@ body {
   text-transform:uppercase; letter-spacing:0.5px;
   margin-bottom:0.5rem; margin-top:1rem;
 }
+.vstat-total-line { font-size:0.85rem; color:#444; margin-bottom:0.6rem; }
+.vstat-total-line strong { color:var(--theme); font-size:1.05rem; }
+.vfreq-tabs { display:flex; gap:0.4rem; margin-bottom:0.6rem; }
+.vfreq-tab { flex:1; padding:0.4rem 0; font-size:0.78rem; font-family:var(--font); border:1.5px solid #e0e0e0; background:#fff; border-radius:8px; color:#888; cursor:pointer; }
+.vfreq-tab.active { background:var(--theme); border-color:var(--theme); color:#fff; font-weight:600; }
+.vstat-chart-wrap { background:#fff; border-radius:12px; padding:0.75rem 0.5rem 0.5rem; box-shadow:0 1px 4px rgba(0,0,0,0.06); overflow-x:auto; margin-bottom:0.5rem; }
+.vstat-chart { display:flex; align-items:flex-end; gap:8px; height:120px; min-width:min-content; }
+.vstat-bar-col { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; flex:0 0 auto; width:26px; height:100%; }
+.vstat-bar-val { font-size:0.62rem; color:#888; margin-bottom:2px; white-space:nowrap; }
+.vstat-bar { width:20px; background:var(--theme); border-radius:4px 4px 0 0; min-height:2px; }
+.vstat-bar-label { font-size:0.6rem; color:#aaa; margin-top:4px; white-space:nowrap; }
 .user-role-card {
   background:#fff; border-radius:10px; padding:0.75rem 1rem;
   margin-bottom:0.5rem; box-shadow:0 1px 4px rgba(0,0,0,0.06);
@@ -656,20 +669,6 @@ body {
 .spinner { width:32px; height:32px; border:3px solid #e0e0e0; border-top-color:var(--theme); border-radius:50%; animation:spin 0.8s linear infinite; }
 @keyframes spin { to{transform:rotate(360deg)} }
 
-/* ── PULL TO REFRESH ── */
-#ptr-indicator {
-  position:fixed; top:0; left:50%; z-index:99999;
-  transform:translate(-50%,-60px);
-  background:#fff; border-radius:0 0 16px 16px;
-  box-shadow:0 2px 12px rgba(0,0,0,0.18);
-  padding:0.5rem 1.1rem; display:flex; align-items:center; gap:0.5rem;
-  font-family:var(--font); font-size:0.78rem; color:var(--theme); font-weight:600;
-  pointer-events:none;
-}
-#ptr-indicator.animate { transition:transform 0.25s ease; }
-#ptr-indicator .ptr-spinner { width:16px; height:16px; border:2px solid var(--theme-light); border-top-color:var(--theme); border-radius:50%; transition:transform 0.1s linear; }
-#ptr-indicator.spin .ptr-spinner { animation:spin 0.6s linear infinite; }
-
 /* ── TOAST ── */
 .toast {
   position:fixed; bottom:80px; left:50%;
@@ -861,11 +860,6 @@ body {
   </div>
 </div>
 
-<div id="ptr-indicator">
-  <div class="ptr-spinner"></div>
-  <span id="ptr-label">ดึงลงเพื่อรีเฟรช</span>
-</div>
-
 <!-- APP -->
 <div id="app">
 
@@ -892,7 +886,7 @@ body {
           <span class="ufa">▼</span>
         </button>
       </div>
-      <div class="header-credit">ทำเนียบรุ่น นตท.32 — ออกแบบระบบโดย Tassapon</div>
+      <div class="header-credit"><span class="header-stats" id="header-stats-main"></span><span>ทำเนียบรุ่น นตท.32 — ออกแบบระบบโดย Tassapon</span></div>
     </div>
     <!-- Filter Chips -->
     <div class="filter-row" id="filter-row">
@@ -917,7 +911,7 @@ body {
         <span class="acct-label">โปรไฟล์</span>
       </button>
     </div>
-    <div class="header-credit">ทำเนียบรุ่น นตท.32 — ออกแบบระบบโดย Tassapon</div>
+    <div class="header-credit"><span class="header-stats" id="header-stats-simple"></span><span>ทำเนียบรุ่น นตท.32 — ออกแบบระบบโดย Tassapon</span></div>
   </div>
   <!-- Account dropdown menu (fixed position, shared) -->
   <div class="acct-menu" id="acct-menu">
@@ -1045,6 +1039,18 @@ body {
   <!-- Admin Page -->
   <div class="page-admin" id="page-admin">
     <div class="page-section-title">จัดการระบบ</div>
+
+    <!-- สถิติการเข้าใช้งาน (Admin + Editor ดูได้) -->
+    <div class="admin-section-label">สถิติการเข้าใช้งาน</div>
+    <div class="vstat-total-line">สมาชิกที่เคยเข้าใช้งานทั้งหมด <strong id="vs-total">-</strong> คน</div>
+    <div class="vfreq-tabs">
+      <button class="vfreq-tab active" data-freq="day" onclick="setVisitChartFreq('day')">รายวัน</button>
+      <button class="vfreq-tab" data-freq="week" onclick="setVisitChartFreq('week')">รายสัปดาห์</button>
+      <button class="vfreq-tab" data-freq="month" onclick="setVisitChartFreq('month')">รายเดือน</button>
+    </div>
+    <div class="vstat-chart-wrap">
+      <div class="vstat-chart" id="vstat-chart"></div>
+    </div>
 
     <!-- Admin-only sections (ซ่อนสำหรับ Editor) -->
     <div id="admin-only-section" style="display:none">
@@ -1939,6 +1945,122 @@ function _enterApp() {
   loadAppsScriptConfig();
   startContentConfig();
   switchTab('pr');
+  logVisit();
+  loadHeaderStats();
+}
+
+// ═══ VISIT STATS ═══
+function _localDateStr(d) {
+  d = d || new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+async function logVisit() {
+  if (!currentUser) return;
+  try {
+    const dateStr = _localDateStr();
+    const uid = currentUser.uid;
+    await db.collection('visitLog').doc(uid + '_' + dateStr).set(
+      { uid, date: dateStr, ts: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }
+    );
+  } catch(e) { /* ไม่ให้กระทบการใช้งานหลัก */ }
+}
+
+async function loadHeaderStats() {
+  try {
+    const todayStr = _localDateStr();
+    const [totalSnap, todaySnap] = await Promise.all([
+      db.collection('userProfiles').get({ source: 'server' }),
+      db.collection('visitLog').where('date', '==', todayStr).get({ source: 'server' })
+    ]);
+    const txt = `ทั้งหมด ${totalSnap.size} คน · วันนี้ ${todaySnap.size} คน`;
+    const mainEl = document.getElementById('header-stats-main');
+    const simpleEl = document.getElementById('header-stats-simple');
+    if (mainEl) mainEl.textContent = txt;
+    if (simpleEl) simpleEl.textContent = txt;
+  } catch(e) { /* silently fail */ }
+}
+
+let _visitLogCache = null; // [{uid,date}, ...] ย้อนหลัง 1 ปี
+let _visitChartFreq = 'day';
+
+async function loadVisitStatsAdmin() {
+  try {
+    const now = new Date();
+    const cutoff1y = new Date(now); cutoff1y.setFullYear(now.getFullYear() - 1);
+    const cutoffStr = _localDateStr(cutoff1y);
+    const [totalSnap, logSnap] = await Promise.all([
+      db.collection('userProfiles').get({ source: 'server' }),
+      db.collection('visitLog').where('date', '>=', cutoffStr).get({ source: 'server' })
+    ]);
+    document.getElementById('vs-total').textContent = totalSnap.size;
+    _visitLogCache = logSnap.docs.map(doc => doc.data());
+    renderVisitChart(_visitChartFreq);
+  } catch(e) {
+    document.getElementById('vs-total').textContent = '-';
+    document.getElementById('vstat-chart').innerHTML = '<div style="color:#aaa;font-size:0.78rem;padding:1rem">โหลดสถิติไม่สำเร็จ</div>';
+  }
+}
+
+function setVisitChartFreq(freq) {
+  _visitChartFreq = freq;
+  document.querySelectorAll('.vfreq-tab').forEach(b => b.classList.toggle('active', b.dataset.freq === freq));
+  renderVisitChart(freq);
+}
+
+function renderVisitChart(freq) {
+  const wrap = document.getElementById('vstat-chart');
+  if (!wrap) return;
+  if (!_visitLogCache) { wrap.innerHTML = ''; return; }
+
+  // นับจำนวนครั้งที่เข้าใช้งานต่อวัน (key = 'YYYY-MM-DD')
+  const byDay = {};
+  _visitLogCache.forEach(d => { byDay[d.date] = (byDay[d.date] || 0) + 1; });
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let buckets = []; // [{label, val}]
+
+  if (freq === 'day') {
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      const key = _localDateStr(d);
+      buckets.push({ label: d.getDate() + '/' + (d.getMonth() + 1), val: byDay[key] || 0 });
+    }
+  } else if (freq === 'week') {
+    for (let w = 11; w >= 0; w--) {
+      const start = new Date(today); start.setDate(start.getDate() - (w * 7 + 6));
+      let sum = 0;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(start); d.setDate(d.getDate() + i);
+        sum += byDay[_localDateStr(d)] || 0;
+      }
+      buckets.push({ label: start.getDate() + '/' + (start.getMonth() + 1), val: sum });
+    }
+  } else { // month
+    for (let m = 11; m >= 0; m--) {
+      const d = new Date(today.getFullYear(), today.getMonth() - m, 1);
+      const y = d.getFullYear(), mo = d.getMonth();
+      let sum = 0;
+      Object.keys(byDay).forEach(key => {
+        const kd = new Date(key + 'T00:00:00');
+        if (kd.getFullYear() === y && kd.getMonth() === mo) sum += byDay[key];
+      });
+      buckets.push({ label: _THAI_MONTHS_SHORT[mo], val: sum });
+    }
+  }
+
+  const maxVal = Math.max(...buckets.map(b => b.val), 1);
+  wrap.innerHTML = buckets.map(b => {
+    const h = Math.max(Math.round((b.val / maxVal) * 90), b.val > 0 ? 4 : 2);
+    return `<div class="vstat-bar-col">
+      <div class="vstat-bar-val">${b.val || ''}</div>
+      <div class="vstat-bar" style="height:${h}px"></div>
+      <div class="vstat-bar-label">${b.label}</div>
+    </div>`;
+  }).join('');
 }
 
 function showPinLockScreen() {
@@ -4514,6 +4636,7 @@ async function loadAdminPage() {
   // Content section (ประชาสัมพันธ์ + ลิงค์ภาพถ่าย): Admin + Editor
   const contentSection = document.getElementById('admin-content-section');
   if (contentSection) contentSection.style.display = (adminOnly || isEditor()) ? 'block' : 'none';
+  loadVisitStatsAdmin();
   await startContentConfig();
   renderPrItems();
   renderAlbumLinks();
@@ -6156,56 +6279,6 @@ function closePrintOverlay() {
   document.getElementById('print-overlay-content').innerHTML = '';
 }
 
-// ═══ PULL TO REFRESH ═══
-(function() {
-  const PTR_THRESHOLD = 70;
-  const PTR_MAX = 110;
-  const ind = document.getElementById('ptr-indicator');
-  const label = document.getElementById('ptr-label');
-  let startY = null, pulling = false, ready = false;
-
-  function ptrAllowed(e) {
-    if (getComputedStyle(document.getElementById('app')).display === 'none') return false;
-    if (e.target.closest('.open')) return false;
-    if ((document.scrollingElement || document.documentElement).scrollTop > 0) return false;
-    return true;
-  }
-
-  document.addEventListener('touchstart', e => {
-    if (!ptrAllowed(e)) { startY = null; return; }
-    startY = e.touches[0].clientY;
-    pulling = true;
-    ready = false;
-    ind.classList.remove('animate');
-  }, { passive: true });
-
-  document.addEventListener('touchmove', e => {
-    if (!pulling || startY === null) return;
-    const diff = e.touches[0].clientY - startY;
-    if (diff <= 0) { ind.style.transform = 'translate(-50%,-60px)'; return; }
-    if (e.cancelable) e.preventDefault();
-    const dist = Math.min(diff, PTR_MAX);
-    ind.style.transform = `translate(-50%,${dist - 60}px)`;
-    ready = diff >= PTR_THRESHOLD;
-    label.textContent = ready ? 'ปล่อยเพื่อรีเฟรช' : 'ดึงลงเพื่อรีเฟรช';
-  }, { passive: false });
-
-  document.addEventListener('touchend', () => {
-    if (!pulling) return;
-    pulling = false;
-    ind.classList.add('animate');
-    if (ready) {
-      ind.style.transform = 'translate(-50%,10px)';
-      ind.classList.add('spin');
-      label.textContent = 'กำลังรีเฟรช...';
-      setTimeout(() => location.reload(), 300);
-    } else {
-      ind.style.transform = 'translate(-50%,-60px)';
-    }
-    startY = null;
-    ready = false;
-  });
-})();
 
 </script>
 
