@@ -1976,7 +1976,7 @@ async function loadHeaderStats() {
       db.collection('userProfiles').get({ source: 'server' }),
       db.collection('visitLog').where('date', '==', todayStr).get({ source: 'server' })
     ]);
-    const txt = `ทั้งหมด ${totalSnap.size} คน · วันนี้ ${todaySnap.size} คน`;
+    const txt = `ผู้ใช้ทั้งหมด ${totalSnap.size} คน · วันนี้ ${todaySnap.size} คน`;
     const mainEl = document.getElementById('header-stats-main');
     const simpleEl = document.getElementById('header-stats-simple');
     if (mainEl) mainEl.textContent = txt;
