@@ -1949,6 +1949,18 @@ function _enterApp() {
   loadHeaderStats();
 }
 
+// เปิดแอปที่ถูกพักไว้ (PWA resume จากพื้นหลัง / bfcache) ให้นับสถิติซ้ำเหมือนเปิดใหม่ทุกครั้ง
+function _refreshOnAppOpen() {
+  if (!currentUser) return;
+  if (getComputedStyle(document.getElementById('app')).display === 'none') return;
+  logVisit();
+  loadHeaderStats();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') _refreshOnAppOpen();
+});
+window.addEventListener('pageshow', e => { if (e.persisted) _refreshOnAppOpen(); });
+
 // ═══ VISIT STATS ═══
 function _localDateStr(d) {
   d = d || new Date();
