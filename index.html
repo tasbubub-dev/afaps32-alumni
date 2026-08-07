@@ -2685,6 +2685,10 @@ function updateUnitScrollBtns() {
 
 const _THAI_MONTHS_FULL  = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 const _THAI_MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const _THAI_WEEKDAYS = ['วันอาทิตย์','วันจันทร์','วันอังคาร','วันพุธ','วันพฤหัสบดี','วันศุกร์','วันเสาร์'];
+function _fmtThaiFullDateWithWeekday(d) {
+  return `${_THAI_WEEKDAYS[d.getDay()]}ที่ ${d.getDate()} ${_THAI_MONTHS_FULL[d.getMonth()]} ${d.getFullYear() + 543}`;
+}
 
 function bdSearchText(bd) {
   if (!bd) return '';
@@ -5061,7 +5065,7 @@ async function loadContentConfig() {
 function renderPrItems() {
   const el = document.getElementById('pr-items-list');
   if (!el) return;
-  const myItems = _prItems.filter(item => item.creatorUid ? item.creatorUid === currentUser?.uid : getUserRole() === 'admin');
+  const myItems = isAdmin() ? _prItems : _prItems.filter(item => item.creatorUid ? item.creatorUid === currentUser?.uid : getUserRole() === 'admin');
   if (!myItems.length) { el.innerHTML = '<div style="color:#aaa;font-size:0.8rem;text-align:center;padding:0.5rem">ยังไม่มีประกาศที่คุณสร้าง</div>'; return; }
   el.innerHTML = myItems.map(item => {
     const ri = _prItems.indexOf(item);
@@ -5078,9 +5082,10 @@ function renderPrItems() {
       </label>` : '';
     return `
     <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:0.6rem;margin-bottom:0.4rem">
-      <input value="${escHtml(item.date||'')}" placeholder="วันที่ เช่น 1 มิถุนายน 2567"
-        oninput="_prItems[${ri}].date=this.value"
-        style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:0.35rem 0.5rem;font-family:var(--font);font-size:0.78rem;margin-bottom:0.3rem;outline:none">
+      <input type="date" value="${escHtml(item.dateISO||'')}"
+        onchange="_prItems[${ri}].dateISO=this.value;_prItems[${ri}].date=this.value?_fmtThaiFullDateWithWeekday(new Date(this.value+'T00:00:00')):'';renderPrItems()"
+        style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:0.35rem 0.5rem;font-family:var(--font);font-size:0.78rem;outline:none">
+      ${item.date ? `<div style="font-size:0.72rem;color:#888;margin:0.2rem 0 0.3rem">${escHtml(item.date)}</div>` : '<div style="margin-bottom:0.3rem"></div>'}
       <input value="${escHtml(item.title||'')}" placeholder="หัวข้อประกาศ"
         oninput="_prItems[${ri}].title=this.value"
         style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:0.35rem 0.5rem;font-family:var(--font);font-size:0.82rem;margin-bottom:0.3rem;outline:none;font-weight:600">
@@ -5548,7 +5553,7 @@ async function savePrItems() {
       }
 
       if (!item.id) item.id = _genPrId();
-      const data = { id: item.id, date: item.date||'', title: item.title||'', body: item.body||'', images, creatorUid: item.creatorUid || '' };
+      const data = { id: item.id, date: item.date||'', dateISO: item.dateISO||'', title: item.title||'', body: item.body||'', images, creatorUid: item.creatorUid || '' };
       await db.collection('config').doc(_prDocId(i)).set(data);
       _prItems[i] = { ...data, _idx: i };
     }
@@ -5569,7 +5574,7 @@ async function savePrItems() {
 function renderAlbumLinks() {
   const el = document.getElementById('album-links-list');
   if (!el) return;
-  const myLinks = _albumLinks.filter(link => !link.creatorUid || link.creatorUid === currentUser?.uid);
+  const myLinks = isAdmin() ? _albumLinks : _albumLinks.filter(link => !link.creatorUid || link.creatorUid === currentUser?.uid);
   if (!myLinks.length) { el.innerHTML = '<div style="color:#aaa;font-size:0.8rem;text-align:center;padding:0.5rem">ยังไม่มีลิงค์ที่คุณสร้าง</div>'; return; }
   el.innerHTML = myLinks.map((link, i) => {
     const realIdx = _albumLinks.indexOf(link);
@@ -5641,7 +5646,7 @@ function parsePrDate(dateStr) {
       if (s.includes(sh)) { month = num; break; }
     }
   }
-  const dM = s.match(/^(\d{1,2})\b/);
+  const dM = s.match(/ที่\s*(\d{1,2})/) || s.match(/^(\d{1,2})\b/);
   if (dM) day = parseInt(dM[1], 10);
   return year * 10000 + month * 100 + day;
 }
