@@ -2956,11 +2956,17 @@ async function loadEventsPage() {
   if (!list) return;
   list.innerHTML = '<div style="text-align:center;color:#aaa;padding:3rem 1rem">กำลังโหลด...</div>';
   try {
-    const snap = await db.collection('events').orderBy('createdAt', 'desc').get();
+    // ไม่ใช้ orderBy('createdAt') เพราะ Firestore จะตัด doc ที่ไม่มี field นี้ทิ้งไปเงียบๆ
+    const snap = await db.collection('events').get({ source: 'server' });
+    const docs = snap.docs.slice().sort((a, b) => {
+      const ta = a.data().createdAt?.toMillis ? a.data().createdAt.toMillis() : 0;
+      const tb = b.data().createdAt?.toMillis ? b.data().createdAt.toMillis() : 0;
+      return tb - ta;
+    });
     _eventsCache = [];
     const userBranch = await _fetchUserBranch();
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    snap.forEach(doc => {
+    docs.forEach(doc => {
       const d = doc.data();
       if (d.active !== false) {
         if (_evIsExpired(d, today)) return;
@@ -3382,14 +3388,21 @@ async function loadEventsAdmin() {
   const el = document.getElementById('admin-events-list');
   if (!el) return;
   try {
-    const snap = await db.collection('events').orderBy('createdAt', 'desc').get();
+    // ไม่ใช้ orderBy('createdAt') เพราะ Firestore จะตัด doc ที่ไม่มี field นี้ทิ้งไปเงียบๆ
+    // (เช่น event เก่าที่สร้างก่อนมี field createdAt) ดึงมาทั้งหมดแล้วเรียงเองแทน
+    const snap = await db.collection('events').get({ source: 'server' });
     if (snap.empty) { el.innerHTML = '<div style="color:#aaa;font-size:0.8rem;padding:0.5rem">ยังไม่มีกิจกรรม</div>'; return; }
-    const isAdmin = getUserRole() === 'admin';
+    const amAdmin = isAdmin();
     const userBranch = await _fetchUserBranch();
+    const docs = snap.docs.slice().sort((a, b) => {
+      const ta = a.data().createdAt?.toMillis ? a.data().createdAt.toMillis() : 0;
+      const tb = b.data().createdAt?.toMillis ? b.data().createdAt.toMillis() : 0;
+      return tb - ta;
+    });
     let html = '';
-    snap.forEach(doc => {
+    docs.forEach(doc => {
       const d = doc.data();
-      if (!isAdmin && !d.allBranches && d.creatorBranch && userBranch && d.creatorBranch !== userBranch) return;
+      if (!amAdmin && !d.allBranches && d.creatorBranch && userBranch && d.creatorBranch !== userBranch) return;
       const isVote = d.type === 'vote';
       const dateStr = isVote ? '' : _evDateRangeStr(d);
       const badge = `<span class="ev-type-badge ${isVote?'vote':'general'}">${isVote?'🗳️ โหวต':'📅 ทั่วไป'}</span>`;
@@ -3407,7 +3420,7 @@ async function loadEventsAdmin() {
         </div>
         <div style="display:flex;gap:0.4rem;align-items:center">
           ${actionBtns}
-          ${(!d.creatorUid||d.creatorUid===currentUser?.uid)?`<button onclick="openEventEditor('${doc.id}')" style="border:1.5px solid #888;color:#555;background:#fff;border-radius:6px;padding:0.2rem 0.5rem;font-size:0.72rem;cursor:pointer">แก้ไข</button>`:''}
+          ${(amAdmin||!d.creatorUid||d.creatorUid===currentUser?.uid)?`<button onclick="openEventEditor('${doc.id}')" style="border:1.5px solid #888;color:#555;background:#fff;border-radius:6px;padding:0.2rem 0.5rem;font-size:0.72rem;cursor:pointer">แก้ไข</button>`:''}
         </div>
       </div>`;
     });
@@ -5708,7 +5721,8 @@ function renderPrPage() {
 
   const sortedItems = [..._prItems]
     .filter(item => (item.date||'').trim() || (item.title||'').trim() || (item.body||'').trim() || (item.images||[]).length)
-    .sort((a, b) => parsePrDate(b.date) - parsePrDate(a.date));
+    .sort((a, b) => parsePrDate(b.date) - parsePrDate(a.date))
+    .slice(0, 10);
   const prHtml = sortedItems.length
     ? sortedItems.map(item => {
         const docId = item.id || (item._idx != null ? _prDocId(item._idx) : null);
