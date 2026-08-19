@@ -1833,6 +1833,18 @@ function applyTheme(branch) {
 function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+// แปลง URL ที่อยู่ในข้อความ (ผ่าน escHtml มาแล้ว) ให้กลายเป็นลิงก์ที่กดเปิดได้
+function linkify(escapedText) {
+  return String(escapedText||'').replace(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/g, match => {
+    let url = match;
+    let trail = '';
+    const trailMatch = url.match(/[).,!?;:'"]+$/);
+    if (trailMatch) { trail = trailMatch[0]; url = url.slice(0, -trail.length); }
+    if (!url) return match;
+    const href = /^www\./i.test(url) ? 'https://' + url : url;
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:#1a6fd6;text-decoration:underline;word-break:break-all">${url}</a>${trail}`;
+  });
+}
 function fmtPosition(pos) {
   if (!pos) return '';
   const esc = escHtml(pos);
@@ -2851,7 +2863,7 @@ function openDetail(id) {
       <div class="modal-row-icon">${r.icon}</div>
       <div class="modal-row-content">
         <span class="modal-row-label">${r.label}</span>
-        <span class="modal-row-val">${r.html !== undefined ? (r.html || '<span style="color:#ccc">ยังไม่ระบุ</span>') : (r.val ? escHtml(r.val) : '<span style="color:#ccc">ยังไม่ระบุ</span>')}</span>
+        <span class="modal-row-val">${r.html !== undefined ? (r.html || '<span style="color:#ccc">ยังไม่ระบุ</span>') : (r.val ? linkify(escHtml(r.val)) : '<span style="color:#ccc">ยังไม่ระบุ</span>')}</span>
       </div>
     </div>`).join('');
 
@@ -3028,6 +3040,11 @@ function _evDateRangeStr(ev) {
   return `ตั้งแต่ ${startStr} ถึง ${endStr}`;
 }
 
+// เก็บ activityOpt เป็น array เสมอ (รองรับข้อมูลเก่าที่เคยเป็น string เดี่ยว)
+function _activityOptArr(v) {
+  return Array.isArray(v) ? v.filter(Boolean) : (v ? [v] : []);
+}
+
 function renderEventCard(ev, submission) {
   const imgHtml = ev.imageUrl
     ? `<div class="ev-img-wrap"><img class="ev-img" src="${ev.imageUrl}" alt="กิจกรรม" loading="lazy" style="cursor:pointer" onclick="openPrLightbox(0,this.closest('.ev-img-wrap'))"></div>`
@@ -3110,15 +3127,17 @@ function renderRSVPForm(ev, rsvp) {
       </div>`;
   }
   if (ev.activityField && ev.activityOptions) {
-    const cur = st.activityOpt !== undefined ? st.activityOpt : (rsvp?.activityOpt || '');
+    const curArr = _activityOptArr(st.activityOpt !== undefined ? st.activityOpt : rsvp?.activityOpt);
     const opts = (ev.activityOptions || '').split('\n').map(s=>s.trim()).filter(Boolean);
     optRows += `<div class="rsvp-sep"></div>
       <div ${dis}>
-        <div class="rsvp-row-label">กิจกรรม</div>
-        <select class="rsvp-field" onchange="_rsvpSetField('${ev.id}','activityOpt',this.value)">
-          <option value="">-- เลือก --</option>
-          ${opts.map(o=>`<option value="${escHtml(o)}" ${cur===o?'selected':''}>${escHtml(o)}</option>`).join('')}
-        </select>
+        <div class="rsvp-row-label">กิจกรรม (เลือกได้มากกว่า 1 รายการ)</div>
+        ${opts.map((o,i)=>`
+          <div class="ev-check-row">
+            <input type="checkbox" id="rsvp-act-${ev.id}-${i}" ${curArr.includes(o)?'checked':''}
+              onchange="_rsvpToggleActivity('${ev.id}',${i},this.checked)">
+            <label for="rsvp-act-${ev.id}-${i}">${escHtml(o)}</label>
+          </div>`).join('')}
       </div>`;
   }
   if (ev.shirtField) {
@@ -3172,7 +3191,7 @@ function renderRSVPConfirmed(ev, rsvp) {
   if (rsvp.slipUrl) rows += `<div class="rsvp-done-row"><span class="rsvp-done-lbl">สลิป</span><span class="rsvp-done-val"><img class="rsvp-done-slip" src="${rsvp.slipUrl}" onclick="this.style.maxWidth=this.style.maxWidth?'':'100%'"></span></div>`;
   if (ev.companionField && (rsvp.companion != null || rsvp.childCompanion != null)) rows += `<div class="rsvp-done-row"><span class="rsvp-done-lbl">ผู้ติดตาม</span><span class="rsvp-done-val">ผู้ใหญ่ ${escHtml(String(rsvp.companion??0))} คน · เด็ก(ต่ำกว่า 12 ปี) ${escHtml(String(rsvp.childCompanion??0))} คน</span></div>`;
   if (ev.roomField && rsvp.roomType) rows += `<div class="rsvp-done-row"><span class="rsvp-done-lbl">ห้องพัก</span><span class="rsvp-done-val">${escHtml(rsvp.roomType)}</span></div>`;
-  if (ev.activityField && rsvp.activityOpt) rows += `<div class="rsvp-done-row"><span class="rsvp-done-lbl">กิจกรรม</span><span class="rsvp-done-val">${escHtml(rsvp.activityOpt)}</span></div>`;
+  if (ev.activityField && _activityOptArr(rsvp.activityOpt).length) rows += `<div class="rsvp-done-row"><span class="rsvp-done-lbl">กิจกรรม</span><span class="rsvp-done-val">${escHtml(_activityOptArr(rsvp.activityOpt).join(', '))}</span></div>`;
   if (ev.shirtField && rsvp.shirtSize) rows += `<div class="rsvp-done-row"><span class="rsvp-done-lbl">ขนาดเสื้อ</span><span class="rsvp-done-val">${escHtml(rsvp.shirtSize)}</span></div>`;
   const rankName = rsvp.rankName || '';
   if (rsvp.note) rows += `<div class="rsvp-done-row"><span class="rsvp-done-lbl">หมายเหตุ</span><span class="rsvp-done-val">${escHtml(rsvp.note)}</span></div>`;
@@ -3186,6 +3205,20 @@ function renderRSVPConfirmed(ev, rsvp) {
 function _rsvpSetField(eventId, field, value) {
   if (!_rsvpState[eventId]) _rsvpState[eventId] = {};
   _rsvpState[eventId][field] = value;
+}
+
+function _rsvpToggleActivity(eventId, idx, checked) {
+  const ev = _eventsCache.find(e => e.id === eventId);
+  const opts = (ev?.activityOptions || '').split('\n').map(s=>s.trim()).filter(Boolean);
+  const opt = opts[idx];
+  if (opt === undefined) return;
+  if (!_rsvpState[eventId]) _rsvpState[eventId] = {};
+  const st = _rsvpState[eventId];
+  const cur = _activityOptArr(st.activityOpt);
+  const pos = cur.indexOf(opt);
+  if (checked) { if (pos === -1) cur.push(opt); }
+  else if (pos !== -1) { cur.splice(pos, 1); }
+  st.activityOpt = cur;
 }
 
 function setRsvpAttend(eventId, attending) {
@@ -3246,7 +3279,7 @@ async function submitRSVP(eventId) {
       rsvpData.childCompanion = parseInt(st.childCompanion) || 0;
     }
     if (ev?.roomField) rsvpData.roomType = st.roomType || '';
-    if (ev?.activityField) rsvpData.activityOpt = st.activityOpt || '';
+    if (ev?.activityField) rsvpData.activityOpt = _activityOptArr(st.activityOpt);
     if (ev?.shirtField) rsvpData.shirtSize = st.shirtSize || '';
     rsvpData.note = st.note !== undefined ? st.note : (_evRsvpCache[eventId]?.note || '');
     await db.collection('eventRSVPs').doc(docId).set(rsvpData, { merge: true });
@@ -3267,7 +3300,7 @@ function editRSVP(eventId) {
       companion: rsvp.companion,
       childCompanion: rsvp.childCompanion,
       roomType: rsvp.roomType,
-      activityOpt: rsvp.activityOpt,
+      activityOpt: _activityOptArr(rsvp.activityOpt),
       shirtSize: rsvp.shirtSize,
       note: rsvp.note
     };
@@ -3716,13 +3749,72 @@ async function _loadEventRSVPs(eventId) {
   return rows;
 }
 
+// หา uid → ชื่อเล่น (ผ่าน userProfiles.memberId → allMembers) สำหรับใช้ในรายงาน
+async function _rsvpNicknameMap(rows) {
+  const uids = [...new Set(rows.map(r => r.uid).filter(Boolean))];
+  const map = {};
+  for (let i = 0; i < uids.length; i += 10) {
+    const chunk = uids.slice(i, i + 10);
+    try {
+      const snap = await db.collection('userProfiles')
+        .where(firebase.firestore.FieldPath.documentId(), 'in', chunk).get();
+      snap.forEach(doc => {
+        const memberId = doc.data().memberId;
+        const m = memberId ? allMembers.find(x => x.id === memberId) : null;
+        if (m && m.nickname) map[doc.id] = m.nickname;
+      });
+    } catch(e) { /* ข้ามถ้าดึงไม่ได้ */ }
+  }
+  return map;
+}
+
+// สรุปจำนวนแยกตามตัวเลือกต่างๆ ของกิจกรรม — คืนเป็น [[หัวข้อ, ค่า], ...] ใช้ร่วมกันทั้ง Excel และ PDF
+function _buildRsvpSummaryRows(ev, rows) {
+  const attendType = ev.attendType !== undefined ? ev.attendType : 'ร่วม/ไม่ร่วม';
+  const relevant = attendType ? rows.filter(r => r.attending) : rows;
+  const out = [];
+  if (attendType) {
+    const [aY] = attendType.split('/');
+    out.push([`จำนวนผู้${aY}`, `${relevant.length} คน`]);
+  } else {
+    out.push(['จำนวนผู้ตอบแบบฟอร์ม', `${rows.length} คน`]);
+  }
+  if (ev.companionField) {
+    const sumAdult = relevant.reduce((s,r)=>s+(parseInt(r.companion)||0),0);
+    const sumChild = relevant.reduce((s,r)=>s+(parseInt(r.childCompanion)||0),0);
+    out.push(['ผู้ติดตาม (ผู้ใหญ่)', `${sumAdult} คน`]);
+    out.push(['ผู้ติดตาม (เด็กต่ำกว่า 12 ปี)', `${sumChild} คน`]);
+  }
+  if (ev.roomField && ev.roomTypes) {
+    const types = (ev.roomTypes || '').split('\n').map(s=>s.trim()).filter(Boolean);
+    const totalRooms = relevant.filter(r => r.roomType).length;
+    out.push(['รวมห้องพักที่จอง', `${totalRooms} ห้อง`]);
+    types.forEach(t => {
+      out.push([`ห้องพัก: ${t}`, `${relevant.filter(r=>r.roomType===t).length} ห้อง`]);
+    });
+  }
+  if (ev.activityField && ev.activityOptions) {
+    (ev.activityOptions || '').split('\n').map(s=>s.trim()).filter(Boolean).forEach(o => {
+      out.push([`กิจกรรม: ${o}`, `${relevant.filter(r=>_activityOptArr(r.activityOpt).includes(o)).length} คน`]);
+    });
+  }
+  if (ev.shirtField) {
+    ['S','M','L','XL','2XL','3XL','4XL'].forEach(s => {
+      const c = relevant.filter(r=>r.shirtSize===s).length;
+      if (c) out.push([`ไซส์เสื้อ: ${s}`, `${c} ตัว`]);
+    });
+  }
+  return out;
+}
+
 async function exportEventRSVPsExcel(eventId) {
   const ev = (await db.collection('events').doc(eventId).get()).data() || {};
   const rows = await _loadEventRSVPs(eventId);
   await _loadSheetJS();
-  const headers = ['ยศ-ชื่อ-นามสกุล', 'สถานะ'];
+  const nickMap = await _rsvpNicknameMap(rows);
+  const headers = ['ยศ-ชื่อ-นามสกุล', 'ชื่อเล่น', 'สถานะ'];
   if (ev.paymentRequired) headers.push('จำนวนเงิน (บาท)', 'สลิป');
-  if (ev.companionField) { headers.push('ผู้ติดตาม(ผู้ใหญ่)'); headers.push('เด็กต่ำกว่า 12 ปี'); }
+  if (ev.companionField) { headers.push('ผู้ติดตาม(ผู้ใหญ่)'); headers.push('ผู้ติดตาม(เด็กต่ำกว่า 12 ปี)'); }
   if (ev.roomField) headers.push('ห้องพัก');
   if (ev.activityField) headers.push('กิจกรรม');
   if (ev.shirtField) headers.push('ขนาดเสื้อ');
@@ -3730,16 +3822,24 @@ async function exportEventRSVPsExcel(eventId) {
   const [_exAY, _exAN] = _exAType ? _exAType.split('/') : ['ร่วม','ไม่ร่วม'];
   headers.push('หมายเหตุ');
   const data = rows.map(r => {
-    const row = [r.rankName || '', _exAType ? (r.attending ? _exAY : _exAN) : ''];
+    const row = [r.rankName || '', nickMap[r.uid] || '', _exAType ? (r.attending ? _exAY : _exAN) : ''];
     if (ev.paymentRequired) { row.push(r.amount || ''); row.push(r.slipUrl ? r.slipUrl : ''); }
     if (ev.companionField) { row.push(r.companion ?? ''); row.push(r.childCompanion ?? ''); }
     if (ev.roomField) row.push(r.roomType || '');
-    if (ev.activityField) row.push(r.activityOpt || '');
+    if (ev.activityField) row.push(_activityOptArr(r.activityOpt).join(', '));
     if (ev.shirtField) row.push(r.shirtSize || '');
     row.push(r.note || '');
     return row;
   });
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  const summaryRows = _buildRsvpSummaryRows(ev, rows);
+  const sheetData = [
+    ['สรุปกิจกรรม: ' + (ev.title || '')],
+    ...summaryRows,
+    [],
+    headers,
+    ...data
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(sheetData);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'RSVPs');
   XLSX.writeFile(wb, (ev.title || 'กิจกรรม') + '_RSVP.xlsx');
@@ -3748,11 +3848,12 @@ async function exportEventRSVPsExcel(eventId) {
 async function exportEventRSVPsPDF(eventId) {
   const ev = (await db.collection('events').doc(eventId).get()).data() || {};
   const rows = await _loadEventRSVPs(eventId);
+  const nickMap = await _rsvpNicknameMap(rows);
   const goRows = rows.filter(r => r.attending);
   const noRows = rows.filter(r => !r.attending);
-  const colHeaders = ['#','ยศ-ชื่อ-นามสกุล','สถานะ'];
+  const colHeaders = ['#','ยศ-ชื่อ-นามสกุล','ชื่อเล่น','สถานะ'];
   if (ev.paymentRequired) colHeaders.push('ค่าใช้จ่าย');
-  if (ev.companionField) { colHeaders.push('ผู้ใหญ่'); colHeaders.push('เด็ก<12ปี'); }
+  if (ev.companionField) { colHeaders.push('ผู้ติดตาม(ผู้ใหญ่)'); colHeaders.push('ผู้ติดตาม(เด็ก<12ปี)'); }
   if (ev.roomField) colHeaders.push('ห้องพัก');
   if (ev.activityField) colHeaders.push('กิจกรรม');
   if (ev.shirtField) colHeaders.push('ขนาดเสื้อ');
@@ -3760,26 +3861,43 @@ async function exportEventRSVPsPDF(eventId) {
   const [_pdfAY, _pdfAN] = _pdfAType ? _pdfAType.split('/') : ['ร่วม','ไม่ร่วม'];
   colHeaders.push('หมายเหตุ');
   const buildRow = (r, i) => {
-    const cells = [`${i+1}`, r.rankName||'', _pdfAType?(r.attending?_pdfAY:_pdfAN):''];
+    const cells = [`${i+1}`, r.rankName||'', nickMap[r.uid]||'', _pdfAType?(r.attending?_pdfAY:_pdfAN):''];
     if (ev.paymentRequired) cells.push(r.amount||'');
     if (ev.companionField) { cells.push(String(r.companion??'')); cells.push(String(r.childCompanion??'')); }
     if (ev.roomField) cells.push(r.roomType||'');
-    if (ev.activityField) cells.push(r.activityOpt||'');
+    if (ev.activityField) cells.push(_activityOptArr(r.activityOpt).join(', '));
     if (ev.shirtField) cells.push(r.shirtSize||'');
     cells.push(r.note||'');
     const nameIdx = 1;
+    const nickIdx = 2;
     const noteIdx = cells.length - 1;
-    return `<tr>${cells.map((c,idx)=>`<td style="text-align:${idx===nameIdx||idx===noteIdx?'left':'center'}">${c}</td>`).join('')}</tr>`;
+    return `<tr>${cells.map((c,idx)=>{
+      const align = (idx===nameIdx||idx===nickIdx||idx===noteIdx) ? 'left' : 'center';
+      const wrap = idx===noteIdx ? '' : 'white-space:nowrap;';
+      return `<td style="text-align:${align};${wrap}">${c}</td>`;
+    }).join('')}</tr>`;
   };
-  const thStyle = 'background:#1a5c2a;color:#fff;padding:4px 6px;font-size:11px;text-align:center';
-  const tdStyle = 'padding:4px 6px;font-size:11px;border-bottom:1px solid #eee';
+  const thStyle = 'background:#1a5c2a;color:#fff;padding:3px 5px;font-size:9px;text-align:center;white-space:nowrap';
+  const tdStyle = 'padding:3px 5px;font-size:9px;border-bottom:1px solid #eee';
   const theadHtml = `<tr>${colHeaders.map(h=>`<th style="${thStyle}">${h}</th>`).join('')}</tr>`;
   const tbodyHtml = [...goRows,...noRows].map(buildRow).join('');
+  const summaryRows = _buildRsvpSummaryRows(ev, rows);
+  const summaryHtml = summaryRows.length ? `
+    <div style="margin-bottom:12px">
+      <div style="font-weight:700;font-size:12px;margin-bottom:4px">สรุปผล</div>
+      <table style="width:auto;min-width:280px;border-collapse:collapse;font-size:10px">
+        ${summaryRows.map(([l,v])=>`<tr>
+          <td style="padding:2px 8px;border:1px solid #ddd;background:#fafafa">${escHtml(l)}</td>
+          <td style="padding:2px 8px;border:1px solid #ddd;font-weight:700;text-align:right">${escHtml(v)}</td>
+        </tr>`).join('')}
+      </table>
+    </div>` : '';
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>${ev.title||'กิจกรรม'}</title>
     <style>body{font-family:'Sarabun',sans-serif;padding:20px}table{width:100%;border-collapse:collapse}
     th{${thStyle}}td{${tdStyle}}h2{font-size:14px;margin-bottom:8px}</style></head>
     <body><h2>${ev.title||'กิจกรรม'} — รายชื่อผู้แสดงความจำนง (${rows.length} คน, ร่วม ${goRows.length} คน)</h2>
+    ${summaryHtml}
     <table><thead>${theadHtml}</thead><tbody>${tbodyHtml}</tbody></table></body></html>`;
   const iframe = document.createElement('iframe');
   iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm';
@@ -5446,7 +5564,7 @@ async function _loadPrComments(docId, cardEl) {
       const editedMark = c.editedAt ? ' <span style="font-size:0.58rem;color:#ccc">(แก้ไขแล้ว)</span>' : '';
       return `<div class="pr-comment-item">${avatar}<div class="pr-comment-bubble">
         <div class="pr-comment-name">${escHtml(c.displayName||'?')}</div>
-        <div class="pr-comment-text" data-raw="${escHtml(c.text)}">${escHtml(c.text).replace(/\n/g,'<br>')}</div>
+        <div class="pr-comment-text" data-raw="${escHtml(c.text)}">${linkify(escHtml(c.text)).replace(/\n/g,'<br>')}</div>
         <div class="pr-comment-time">${timeStr}${editedMark}${editBtn}</div>
       </div></div>`;
     }).join('');
@@ -5740,7 +5858,7 @@ function renderPrPage() {
         <div class="pr-card">
           ${item.date  ? `<div class="pr-date">${escHtml(item.date)}</div>`  : ''}
           ${item.title ? `<div class="pr-title">${escHtml(item.title)}</div>` : ''}
-          ${item.body  ? `<div class="pr-body">${escHtml(item.body).replace(/\n/g,'<br>')}</div>` : ''}
+          ${item.body  ? `<div class="pr-body">${linkify(escHtml(item.body)).replace(/\n/g,'<br>')}</div>` : ''}
           ${renderPrImages(item.images)}
           ${docId ? _buildReactCommentHtml(docId) : ''}
         </div>`;
@@ -5845,7 +5963,7 @@ function renderChatMessages(msgs) {
     } else if (msg.type === 'file') {
       bubble = `<a class="file-link" href="${msg.mediaUrl}" download="${escHtml(msg.fileName||'file')}">📄 ${escHtml(msg.fileName||'ไฟล์')}</a>`;
     } else {
-      bubble = escHtml(msg.text || '').replace(/\n/g, '<br>');
+      bubble = linkify(escHtml(msg.text || '')).replace(/\n/g, '<br>');
     }
 
     html += `
