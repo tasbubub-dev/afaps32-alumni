@@ -1040,7 +1040,8 @@ body {
   <div class="page-admin" id="page-admin">
     <div class="page-section-title">จัดการระบบ</div>
 
-    <!-- สถิติการเข้าใช้งาน (Admin + Editor ดูได้) -->
+    <!-- สถิติการเข้าใช้งาน (Admin เท่านั้น) -->
+    <div id="admin-visitstats-section" style="display:none">
     <div class="admin-section-label">สถิติการเข้าใช้งาน</div>
     <div class="vstat-total-line">สมาชิกที่เคยเข้าใช้งานทั้งหมด <strong id="vs-total">-</strong> คน</div>
     <div class="vfreq-tabs">
@@ -1050,6 +1051,7 @@ body {
     </div>
     <div class="vstat-chart-wrap">
       <div class="vstat-chart" id="vstat-chart"></div>
+    </div>
     </div>
 
     <!-- Admin-only sections (ซ่อนสำหรับ Editor) -->
@@ -4793,7 +4795,10 @@ async function loadAdminPage() {
   // Content section (ประชาสัมพันธ์ + ลิงค์ภาพถ่าย): Admin + Editor
   const contentSection = document.getElementById('admin-content-section');
   if (contentSection) contentSection.style.display = (adminOnly || isEditor()) ? 'block' : 'none';
-  loadVisitStatsAdmin();
+  // สถิติการเข้าใช้งาน: Admin เท่านั้น
+  const visitStatsSection = document.getElementById('admin-visitstats-section');
+  if (visitStatsSection) visitStatsSection.style.display = adminOnly ? 'block' : 'none';
+  if (adminOnly) loadVisitStatsAdmin();
   await startContentConfig();
   renderPrItems();
   renderAlbumLinks();
