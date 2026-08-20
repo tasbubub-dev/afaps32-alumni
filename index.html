@@ -3726,40 +3726,41 @@ async function _rsvpNicknameMap(rows) {
   return map;
 }
 
-// สรุปจำนวนแยกตามตัวเลือกต่างๆ ของกิจกรรม — คืนเป็น [[หัวข้อ, ค่า], ...] ใช้ร่วมกันทั้ง Excel และ PDF
+// สรุปจำนวนแยกตามตัวเลือกต่างๆ ของกิจกรรม — คืนเป็น [[หัวข้อ, ค่า, กลุ่ม], ...] ใช้ร่วมกันทั้ง Excel และ PDF
+// กลุ่ม 'left'/'right' ใช้จัดคอลัมน์ในรายงาน PDF เท่านั้น (Excel ไม่สนใจ ใช้แค่ label/value)
 function _buildRsvpSummaryRows(ev, rows) {
   const attendType = ev.attendType !== undefined ? ev.attendType : 'ร่วม/ไม่ร่วม';
   const relevant = attendType ? rows.filter(r => r.attending) : rows;
   const out = [];
   if (attendType) {
     const [aY] = attendType.split('/');
-    out.push([`จำนวนผู้${aY}`, `${relevant.length} คน`]);
+    out.push([`จำนวนผู้${aY}`, `${relevant.length} คน`, 'left']);
   } else {
-    out.push(['จำนวนผู้ตอบแบบฟอร์ม', `${rows.length} คน`]);
+    out.push(['จำนวนผู้ตอบแบบฟอร์ม', `${rows.length} คน`, 'left']);
   }
   if (ev.companionField) {
     const sumAdult = relevant.reduce((s,r)=>s+(parseInt(r.companion)||0),0);
     const sumChild = relevant.reduce((s,r)=>s+(parseInt(r.childCompanion)||0),0);
-    out.push(['ผู้ติดตาม (ผู้ใหญ่)', `${sumAdult} คน`]);
-    out.push(['ผู้ติดตาม (เด็กต่ำกว่า 12 ปี)', `${sumChild} คน`]);
+    out.push(['ผู้ติดตาม (ผู้ใหญ่)', `${sumAdult} คน`, 'left']);
+    out.push(['ผู้ติดตาม (เด็กต่ำกว่า 12 ปี)', `${sumChild} คน`, 'left']);
   }
   if (ev.roomField && ev.roomTypes) {
     const types = (ev.roomTypes || '').split('\n').map(s=>s.trim()).filter(Boolean);
     const totalRooms = relevant.filter(r => r.roomType).length;
-    out.push(['รวมห้องพักที่จอง', `${totalRooms} ห้อง`]);
+    out.push(['รวมห้องพักที่จอง', `${totalRooms} ห้อง`, 'left']);
     types.forEach(t => {
-      out.push([`ห้องพัก: ${t}`, `${relevant.filter(r=>r.roomType===t).length} ห้อง`]);
+      out.push([`ห้องพัก: ${t}`, `${relevant.filter(r=>r.roomType===t).length} ห้อง`, 'left']);
     });
   }
   if (ev.activityField && ev.activityOptions) {
     (ev.activityOptions || '').split('\n').map(s=>s.trim()).filter(Boolean).forEach(o => {
-      out.push([`กิจกรรม: ${o}`, `${relevant.filter(r=>_activityOptArr(r.activityOpt).includes(o)).length} คน`]);
+      out.push([`กิจกรรม: ${o}`, `${relevant.filter(r=>_activityOptArr(r.activityOpt).includes(o)).length} คน`, 'right']);
     });
   }
   if (ev.shirtField) {
     ['S','M','L','XL','2XL','3XL','4XL'].forEach(s => {
       const c = relevant.filter(r=>r.shirtSize===s).length;
-      if (c) out.push([`ไซส์เสื้อ: ${s}`, `${c} ตัว`]);
+      if (c) out.push([`ไซส์เสื้อ: ${s}`, `${c} ตัว`, 'left']);
     });
   }
   return out;
@@ -3792,7 +3793,7 @@ async function exportEventRSVPsExcel(eventId) {
   const summaryRows = _buildRsvpSummaryRows(ev, rows);
   const sheetData = [
     ['สรุปกิจกรรม: ' + (ev.title || '')],
-    ...summaryRows,
+    ...summaryRows.map(([l,v]) => [l,v]),
     [],
     headers,
     ...data
@@ -3840,15 +3841,23 @@ async function exportEventRSVPsPDF(eventId) {
   const theadHtml = `<tr>${colHeaders.map(h=>`<th style="${thStyle}">${h}</th>`).join('')}</tr>`;
   const tbodyHtml = [...goRows,...noRows].map(buildRow).join('');
   const summaryRows = _buildRsvpSummaryRows(ev, rows);
+  const _summaryColTable = (rowsArr) => rowsArr.length ? `
+    <table style="width:100%;border-collapse:collapse;font-size:10px">
+      ${rowsArr.map(([l,v])=>`<tr>
+        <td style="padding:2px 8px;border:1px solid #ddd;background:#fafafa">${escHtml(l)}</td>
+        <td style="padding:2px 8px;border:1px solid #ddd;font-weight:700;text-align:right">${escHtml(v)}</td>
+      </tr>`).join('')}
+    </table>` : '';
+  const summaryLeft = summaryRows.filter(r => r[2] !== 'right');
+  const summaryRight = summaryRows.filter(r => r[2] === 'right');
+  // แบ่งสรุปผลเป็น 2 คอลัมน์ ซ้าย/ขวา (กิจกรรมอยู่ฝั่งขวา) กันแถวยาวเกินไปเมื่อมีตัวเลือกเยอะ
   const summaryHtml = summaryRows.length ? `
     <div style="margin-bottom:12px">
       <div style="font-weight:700;font-size:12px;margin-bottom:4px">สรุปผล</div>
-      <table style="width:auto;min-width:280px;border-collapse:collapse;font-size:10px">
-        ${summaryRows.map(([l,v])=>`<tr>
-          <td style="padding:2px 8px;border:1px solid #ddd;background:#fafafa">${escHtml(l)}</td>
-          <td style="padding:2px 8px;border:1px solid #ddd;font-weight:700;text-align:right">${escHtml(v)}</td>
-        </tr>`).join('')}
-      </table>
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        <div style="flex:1;min-width:0">${_summaryColTable(summaryLeft)}</div>
+        ${summaryRight.length ? `<div style="flex:1;min-width:0">${_summaryColTable(summaryRight)}</div>` : ''}
+      </div>
     </div>` : '';
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>${ev.title||'กิจกรรม'}</title>
