@@ -602,6 +602,8 @@ body {
 .vote-results-lbl { display:flex; justify-content:space-between; font-size:0.8rem; color:#444; margin-bottom:0.25rem; }
 .vote-results-bar-bg { background:#f0f0f0; border-radius:6px; height:10px; overflow:hidden; }
 .vote-results-bar-fill { background:var(--theme,#5c2d91); height:100%; border-radius:6px; }
+.vote-results-section-title { font-size:0.75rem; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:0.5px; margin:1rem 0 0.5rem; }
+.vote-results-section-title:first-child { margin-top:0; }
 /* Event editor overlay */
 .ev-ed-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:400; align-items:flex-end; justify-content:center; }
 .ev-ed-overlay.open { display:flex; }
@@ -1481,7 +1483,7 @@ function json(obj) {
 <div class="vote-results-overlay" id="vote-results-overlay" onclick="closeVoteResultsIfOutside(event)">
   <div class="vote-results-sheet">
     <div class="ev-ed-hdr">
-      <span>📊 ผลโหวต</span>
+      <span id="vote-results-title">📊 ผลโหวต</span>
       <button class="ev-ed-close" onclick="closeVoteResults()">✕</button>
     </div>
     <div id="vote-results-body"></div>
@@ -3114,7 +3116,7 @@ function renderRSVPForm(ev, rsvp) {
   }
   if (ev.activityField && ev.activityOptions) {
     const isMulti = ev.activityMode === 'multi';
-    const curActs = st.activities !== undefined ? st.activities : (rsvp?.activities || (rsvp?.activityOpt ? [{ label: rsvp.activityOpt, count: 1 }] : []));
+    const curActs = _dedupByLabel(st.activities !== undefined ? st.activities : (rsvp?.activities || (rsvp?.activityOpt ? [{ label: rsvp.activityOpt, count: 1 }] : [])));
     const opts = (ev.activityOptions || '').split('\n').map(s=>s.trim()).filter(Boolean);
     optRows += `<div class="rsvp-sep"></div>
       <div ${dis}>
@@ -3139,11 +3141,11 @@ function renderRSVPForm(ev, rsvp) {
     const designs = ev.shirtDesigns || [];
     optRows += `<div class="rsvp-sep"></div>`;
     if (designs.length) {
-      const curShirts = st.shirts !== undefined ? st.shirts : (rsvp?.shirts || (rsvp?.shirtDesign ? [{ label: rsvp.shirtDesign, size: rsvp.shirtSize || '' }] : []));
-      optRows += `<div class="rsvp-row-label">แบบเสื้อ (เลือกได้มากกว่า 1 แบบ แต่ละแบบเลือกไซส์ของตัวเอง)</div>
+      const curShirts = _dedupByLabel(st.shirts !== undefined ? st.shirts : (rsvp?.shirts || (rsvp?.shirtDesign ? [{ label: rsvp.shirtDesign, sizes: rsvp.shirtSize ? [rsvp.shirtSize] : [] }] : [])));
+      optRows += `<div class="rsvp-row-label">แบบเสื้อ (เลือกได้มากกว่า 1 แบบ แต่ละแบบเลือกไซส์ได้สูงสุด 2 ไซส์)</div>
         ${designs.map(d => {
           const sel = curShirts.find(s => s.label === d.label);
-          const size = sel ? sel.size : '';
+          const selSizes = sel ? (sel.sizes || (sel.size ? [sel.size] : [])) : [];
           return `<div style="border:1.5px solid ${sel?'var(--color)':'#e0e0e0'};border-radius:8px;padding:0.5rem;margin-bottom:0.5rem;background:${sel?'var(--light)':'#fff'}">
             <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
               <input type="checkbox" ${sel?'checked':''} onchange="_rsvpToggleShirt('${ev.id}','${escHtml(d.label)}');renderEvCard('${ev.id}')">
@@ -3151,9 +3153,13 @@ function renderRSVPForm(ev, rsvp) {
               <span style="font-size:0.85rem;font-weight:600">${escHtml(d.label)}</span>
             </label>
             ${sel ? `<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;margin-left:1.6rem">
-              ${sizes.map(s=>`<button onclick="_rsvpSetShirtSize('${ev.id}','${escHtml(d.label)}','${s}');renderEvCard('${ev.id}')"
-                style="border:1.5px solid ${size===s?'var(--color)':'#ccc'};background:${size===s?'var(--light)':'#fff'};border-radius:6px;padding:0.2rem 0.6rem;font-family:var(--font);cursor:pointer;font-size:0.8rem">${s}</button>`).join('')}
-            </div>` : ''}
+              ${sizes.map(s=>{
+                const active = selSizes.includes(s);
+                return `<button onclick="_rsvpToggleShirtSize('${ev.id}','${escHtml(d.label)}','${s}');renderEvCard('${ev.id}')"
+                  style="border:1.5px solid ${active?'var(--color)':'#ccc'};background:${active?'var(--light)':'#fff'};border-radius:6px;padding:0.2rem 0.6rem;font-family:var(--font);cursor:pointer;font-size:0.8rem">${s}</button>`;
+              }).join('')}
+            </div>
+            <div style="font-size:0.68rem;color:#888;margin-left:1.6rem;margin-top:0.25rem">เลือกได้สูงสุด 2 ไซส์ (${selSizes.length}/2)</div>` : ''}
           </div>`;
         }).join('')}`;
     } else {
@@ -3194,15 +3200,26 @@ function renderRSVPForm(ev, rsvp) {
   </div>`;
 }
 
+// ถ้ามีรายการซ้ำ label เดียวกัน ให้ถือว่ารายการหลังสุดในอาเรย์ (บันทึกล่าสุด) เป็นตัวที่ใช้จริง
+function _dedupByLabel(arr) {
+  if (!arr || !arr.length) return arr || [];
+  const map = new Map();
+  arr.forEach(item => map.set(item.label, item));
+  return [...map.values()];
+}
+
 function _fmtRsvpActivities(rsvp) {
   if (rsvp.activities && rsvp.activities.length) {
-    return rsvp.activities.map(a => `${a.label}${a.count ? ` (${a.count} คน)` : ''}`).join(', ');
+    return _dedupByLabel(rsvp.activities).map(a => `${a.label}${a.count ? ` (${a.count} คน)` : ''}`).join(', ');
   }
   return rsvp.activityOpt || '';
 }
 function _fmtRsvpShirt(rsvp) {
   if (rsvp.shirts && rsvp.shirts.length) {
-    return rsvp.shirts.map(s => `${s.label}${s.size ? ` (${s.size})` : ''}`).join(', ');
+    return _dedupByLabel(rsvp.shirts).map(s => {
+      const sizes = s.sizes || (s.size ? [s.size] : []);
+      return `${s.label}${sizes.length ? ` (${sizes.join(', ')})` : ''}`;
+    }).join(', ');
   }
   if (rsvp.shirtDesign) return `${rsvp.shirtDesign}${rsvp.shirtSize ? ` (${rsvp.shirtSize})` : ''}`;
   return rsvp.shirtSize || '';
@@ -3264,14 +3281,18 @@ function _rsvpToggleShirt(eventId, label) {
   const idx = prev.findIndex(s => s.label === label);
   const arr = prev.slice();
   if (idx >= 0) arr.splice(idx, 1);
-  else arr.push({ label, size: '' });
+  else arr.push({ label, sizes: [] });
   _rsvpState[eventId].shirts = arr;
 }
 
-function _rsvpSetShirtSize(eventId, label, size) {
+function _rsvpToggleShirtSize(eventId, label, size) {
   const arr = _rsvpState[eventId]?.shirts || [];
   const item = arr.find(s => s.label === label);
-  if (item) item.size = size;
+  if (!item) return;
+  if (!item.sizes) item.sizes = item.size ? [item.size] : [];
+  const idx = item.sizes.indexOf(size);
+  if (idx >= 0) item.sizes.splice(idx, 1);
+  else if (item.sizes.length < 2) item.sizes.push(size);
 }
 
 function setRsvpAttend(eventId, attending) {
@@ -3332,10 +3353,10 @@ async function submitRSVP(eventId) {
       rsvpData.childCompanion = parseInt(st.childCompanion) || 0;
     }
     if (ev?.roomField) rsvpData.roomType = st.roomType || '';
-    if (ev?.activityField) rsvpData.activities = st.activities || [];
+    if (ev?.activityField) rsvpData.activities = _dedupByLabel(st.activities || []);
     if (ev?.shirtField) {
       if (ev.shirtDesigns && ev.shirtDesigns.length) {
-        rsvpData.shirts = st.shirts || [];
+        rsvpData.shirts = _dedupByLabel(st.shirts || []);
       } else {
         rsvpData.shirtSize = st.shirtSize || '';
       }
@@ -3360,7 +3381,7 @@ function editRSVP(eventId) {
       childCompanion: rsvp.childCompanion,
       roomType: rsvp.roomType,
       activities: rsvp.activities || (rsvp.activityOpt ? [{ label: rsvp.activityOpt, count: 1 }] : []),
-      shirts: rsvp.shirts || (rsvp.shirtDesign ? [{ label: rsvp.shirtDesign, size: rsvp.shirtSize || '' }] : []),
+      shirts: rsvp.shirts || (rsvp.shirtDesign ? [{ label: rsvp.shirtDesign, sizes: rsvp.shirtSize ? [rsvp.shirtSize] : [] }] : []),
       shirtSize: rsvp.shirtSize,
       note: rsvp.note
     };
@@ -3512,7 +3533,9 @@ async function loadEventsAdmin() {
       const actionBtns = isVote
         ? `<button onclick="openVoteResults('${doc.id}')"
             style="border:1.5px solid #5c2d91;color:#5c2d91;background:#fff;border-radius:6px;padding:0.2rem 0.5rem;font-size:0.72rem;cursor:pointer">📊 ดูผลโหวต</button>`
-        : `<button onclick="exportEventRSVPsExcel('${doc.id}')"
+        : `<button onclick="openRsvpSummary('${doc.id}')"
+            style="border:1.5px solid #5c2d91;color:#5c2d91;background:#fff;border-radius:6px;padding:0.2rem 0.5rem;font-size:0.72rem;cursor:pointer">📊 สรุปผล</button>
+          <button onclick="exportEventRSVPsExcel('${doc.id}')"
             style="border:1.5px solid #1a5c2a;color:#1a5c2a;background:#fff;border-radius:6px;padding:0.2rem 0.5rem;font-size:0.72rem;cursor:pointer">📊 Excel</button>
           <button onclick="exportEventRSVPsPDF('${doc.id}')"
             style="border:1.5px solid #c0392b;color:#c0392b;background:#fff;border-radius:6px;padding:0.2rem 0.5rem;font-size:0.72rem;cursor:pointer">📄 PDF</button>`;
@@ -3536,6 +3559,8 @@ async function loadEventsAdmin() {
 async function openVoteResults(eventId) {
   const overlay = document.getElementById('vote-results-overlay');
   const body = document.getElementById('vote-results-body');
+  const title = document.getElementById('vote-results-title');
+  if (title) title.textContent = '📊 ผลโหวต';
   body.innerHTML = '<div style="text-align:center;color:#aaa;padding:1rem">กำลังโหลด...</div>';
   const hdr = document.getElementById('simple-header');
   overlay.style.top = (hdr && getComputedStyle(hdr).display !== 'none' ? hdr.getBoundingClientRect().bottom : 0) + 'px';
@@ -3572,6 +3597,97 @@ async function openVoteResults(eventId) {
     body.innerHTML = `<div style="font-size:0.8rem;color:#666;margin-bottom:0.75rem">ผู้โหวตทั้งหมด ${totalVoters} คน</div>${rows}`;
   } catch(e) {
     body.innerHTML = '<div style="color:#e74c3c;font-size:0.8rem">โหลดผลโหวตไม่ได้: ' + e.message + '</div>';
+  }
+}
+
+async function openRsvpSummary(eventId) {
+  const overlay = document.getElementById('vote-results-overlay');
+  const body = document.getElementById('vote-results-body');
+  const title = document.getElementById('vote-results-title');
+  if (title) title.textContent = '📊 สรุปผลกิจกรรม';
+  body.innerHTML = '<div style="text-align:center;color:#aaa;padding:1rem">กำลังโหลด...</div>';
+  const hdr = document.getElementById('simple-header');
+  overlay.style.top = (hdr && getComputedStyle(hdr).display !== 'none' ? hdr.getBoundingClientRect().bottom : 0) + 'px';
+  overlay.classList.add('open');
+  try {
+    const evDoc = await db.collection('events').doc(eventId).get();
+    const ev = evDoc.exists ? evDoc.data() : {};
+    const rows = await _loadEventRSVPs(eventId);
+    const goRows = rows.filter(r => r.attending);
+    const totalAll = rows.length;
+    const totalGo = goRows.length;
+
+    const barRow = (label, count, total) => {
+      const pct = total ? Math.round((count / total) * 100) : 0;
+      return `<div class="vote-results-row">
+        <div class="vote-results-lbl"><span>${escHtml(label)}</span><span>${count} คน (${pct}%)</span></div>
+        <div class="vote-results-bar-bg"><div class="vote-results-bar-fill" style="width:${pct}%"></div></div>
+      </div>`;
+    };
+
+    let html = `<div style="font-size:0.8rem;color:#666;margin-bottom:0.75rem">ตอบรับทั้งหมด ${totalAll} คน · เข้าร่วม ${totalGo} คน</div>`;
+    let hasSection = false;
+
+    if (ev.activityField && ev.activityOptions) {
+      hasSection = true;
+      const opts = (ev.activityOptions || '').split('\n').map(s=>s.trim()).filter(Boolean);
+      const counts = {}, headcounts = {};
+      opts.forEach(o => { counts[o] = 0; headcounts[o] = 0; });
+      goRows.forEach(r => {
+        const acts = _dedupByLabel(r.activities || (r.activityOpt ? [{ label: r.activityOpt, count: 1 }] : []));
+        acts.forEach(a => {
+          if (counts[a.label] === undefined) return;
+          counts[a.label]++;
+          headcounts[a.label] += parseInt(a.count) || 1;
+        });
+      });
+      html += `<div class="vote-results-section-title">กิจกรรม</div>`;
+      html += opts.map(o => barRow(`${o} (รวม ${headcounts[o]} คน)`, counts[o], totalGo)).join('');
+    }
+
+    if (ev.roomField && ev.roomTypes) {
+      hasSection = true;
+      const types = (ev.roomTypes || '').split('\n').map(s=>s.trim()).filter(Boolean);
+      const counts = {};
+      types.forEach(t => counts[t] = 0);
+      goRows.forEach(r => { if (r.roomType && counts[r.roomType] !== undefined) counts[r.roomType]++; });
+      html += `<div class="vote-results-section-title">ห้องพัก</div>`;
+      html += types.map(t => barRow(t, counts[t], totalGo)).join('');
+    }
+
+    if (ev.shirtField) {
+      hasSection = true;
+      const sizes = ['S','M','L','XL','2XL','3XL','4XL'];
+      const designs = ev.shirtDesigns || [];
+      if (designs.length) {
+        designs.forEach(d => {
+          const sizeCounts = {};
+          sizes.forEach(s => sizeCounts[s] = 0);
+          let designCount = 0;
+          goRows.forEach(r => {
+            const shirts = _dedupByLabel(r.shirts || (r.shirtDesign ? [{ label: r.shirtDesign, sizes: r.shirtSize ? [r.shirtSize] : [] }] : []));
+            const match = shirts.find(s => s.label === d.label);
+            if (match) {
+              designCount++;
+              (match.sizes || (match.size ? [match.size] : [])).forEach(sz => { if (sizeCounts[sz] !== undefined) sizeCounts[sz]++; });
+            }
+          });
+          html += `<div class="vote-results-section-title">เสื้อ: ${escHtml(d.label)} (รวม ${designCount} คน)</div>`;
+          html += sizes.map(s => barRow(s, sizeCounts[s], designCount)).join('');
+        });
+      } else {
+        const counts = {};
+        sizes.forEach(s => counts[s] = 0);
+        goRows.forEach(r => { if (r.shirtSize && counts[r.shirtSize] !== undefined) counts[r.shirtSize]++; });
+        html += `<div class="vote-results-section-title">ขนาดเสื้อ</div>`;
+        html += sizes.map(s => barRow(s, counts[s], totalGo)).join('');
+      }
+    }
+
+    if (!hasSection) html += `<div style="text-align:center;color:#aaa;padding:1rem">กิจกรรมนี้ไม่มีตัวเลือกให้สรุปผล</div>`;
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = '<div style="color:#e74c3c;font-size:0.8rem">โหลดสรุปผลไม่ได้: ' + e.message + '</div>';
   }
 }
 function closeVoteResults() { document.getElementById('vote-results-overlay').classList.remove('open'); }
