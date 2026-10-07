@@ -1435,6 +1435,7 @@ function json(obj) {
         <div class="ev-check-row"><input type="checkbox" id="ev-opt-payment" onchange="_toggleEvEdCond()"><label for="ev-opt-payment">ชำระเงิน + อัพโหลดสลิป</label></div>
         <div class="ev-check-row"><input type="checkbox" id="ev-opt-companion"><label for="ev-opt-companion">ผู้ติดตาม (ไม่รวมตัวเอง)</label></div>
         <div class="ev-check-row"><input type="checkbox" id="ev-opt-room" onchange="_toggleEvEdCond()"><label for="ev-opt-room">ประเภทห้องพัก</label></div>
+        <div class="ev-check-row"><input type="checkbox" id="ev-opt-travel" onchange="_toggleEvEdCond()"><label for="ev-opt-travel">การเดินทาง</label></div>
         <div class="ev-check-row"><input type="checkbox" id="ev-opt-activity" onchange="_toggleEvEdCond()"><label for="ev-opt-activity">กิจกรรม</label></div>
         <div class="ev-check-row"><input type="checkbox" id="ev-opt-shirt" onchange="_toggleEvEdCond()"><label for="ev-opt-shirt">ไซร์เสื้อ</label></div>
       </div>
@@ -1445,6 +1446,10 @@ function json(obj) {
       <div id="ev-room-grp" class="ev-fld-grp" style="display:none">
         <label class="ev-fld-lbl">ประเภทห้องพัก (แต่ละบรรทัด)</label>
         <textarea class="ev-fld" id="ev-ed-rooms" rows="3" placeholder="ห้องเดี่ยว&#10;ห้องคู่&#10;ห้องสามเตียง" style="resize:vertical"></textarea>
+      </div>
+      <div id="ev-travel-grp" class="ev-fld-grp" style="display:none">
+        <label class="ev-fld-lbl">ช่องทางการเดินทาง (แต่ละบรรทัด)</label>
+        <textarea class="ev-fld" id="ev-ed-travels" rows="3" placeholder="รถบัสส่วนกลาง&#10;รถส่วนตัว&#10;เครื่องบิน" style="resize:vertical"></textarea>
       </div>
       <div id="ev-act-grp" class="ev-fld-grp" style="display:none">
         <label class="ev-fld-lbl">กิจกรรม (แต่ละบรรทัด)</label>
@@ -3114,6 +3119,18 @@ function renderRSVPForm(ev, rsvp) {
         </select>
       </div>`;
   }
+  if (ev.travelField && ev.travelOptions) {
+    const cur = st.travelOpt !== undefined ? st.travelOpt : (rsvp?.travelOpt || '');
+    const types = (ev.travelOptions || '').split('\n').map(s=>s.trim()).filter(Boolean);
+    optRows += `<div class="rsvp-sep"></div>
+      <div ${dis}>
+        <div class="rsvp-row-label">การเดินทาง</div>
+        <select class="rsvp-field" onchange="_rsvpSetField('${ev.id}','travelOpt',this.value)">
+          <option value="">-- เลือก --</option>
+          ${types.map(t=>`<option value="${escHtml(t)}" ${cur===t?'selected':''}>${escHtml(t)}</option>`).join('')}
+        </select>
+      </div>`;
+  }
   if (ev.activityField && ev.activityOptions) {
     const isMulti = ev.activityMode === 'multi';
     const curActs = _dedupByLabel(st.activities !== undefined ? st.activities : (rsvp?.activities || (rsvp?.activityOpt ? [{ label: rsvp.activityOpt, count: 1 }] : [])));
@@ -3139,27 +3156,25 @@ function renderRSVPForm(ev, rsvp) {
   if (ev.shirtField) {
     const sizes = ['S','M','L','XL','2XL','3XL','4XL'];
     const designs = ev.shirtDesigns || [];
-    optRows += `<div class="rsvp-sep"></div>`;
+    optRows += `<div class="rsvp-sep"></div><div ${dis}>`;
     if (designs.length) {
-      const curShirts = _dedupByLabel(st.shirts !== undefined ? st.shirts : (rsvp?.shirts || (rsvp?.shirtDesign ? [{ label: rsvp.shirtDesign, sizes: rsvp.shirtSize ? [rsvp.shirtSize] : [] }] : [])));
-      optRows += `<div class="rsvp-row-label">แบบเสื้อ (เลือกได้มากกว่า 1 แบบ แต่ละแบบเลือกไซส์ได้สูงสุด 2 ไซส์)</div>
+      const curShirts = _dedupByLabel(st.shirts !== undefined ? st.shirts : (rsvp?.shirts || (rsvp?.shirtDesign ? [{ label: rsvp.shirtDesign, size: rsvp.shirtSize || '' }] : [])));
+      optRows += `<div class="rsvp-row-label">แบบเสื้อ (ต้องเลือกไซส์ให้ครบทุกแบบ)</div>
         ${designs.map(d => {
           const sel = curShirts.find(s => s.label === d.label);
-          const selSizes = sel ? (sel.sizes || (sel.size ? [sel.size] : [])) : [];
-          return `<div style="border:1.5px solid ${sel?'var(--color)':'#e0e0e0'};border-radius:8px;padding:0.5rem;margin-bottom:0.5rem;background:${sel?'var(--light)':'#fff'}">
-            <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
-              <input type="checkbox" ${sel?'checked':''} onchange="_rsvpToggleShirt('${ev.id}','${escHtml(d.label)}');renderEvCard('${ev.id}')">
-              ${d.imageUrl ? `<img src="${d.imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;cursor:zoom-in" onclick="event.preventDefault();event.stopPropagation();openPrLightbox(0,this.parentElement)">` : ''}
+          const size = sel ? (sel.size || (sel.sizes && sel.sizes[0]) || '') : '';
+          return `<div style="border:1.5px solid ${size?'var(--color)':'#e0e0e0'};border-radius:8px;padding:0.5rem;margin-bottom:0.5rem;background:${size?'var(--light)':'#fff'}">
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem">
+              ${d.imageUrl ? `<img src="${d.imageUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;cursor:zoom-in" onclick="openPrLightbox(0,this.parentElement)">` : ''}
               <span style="font-size:0.85rem;font-weight:600">${escHtml(d.label)}</span>
-            </label>
-            ${sel ? `<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;margin-left:1.6rem">
-              ${sizes.map(s=>{
-                const active = selSizes.includes(s);
-                return `<button onclick="_rsvpToggleShirtSize('${ev.id}','${escHtml(d.label)}','${s}');renderEvCard('${ev.id}')"
-                  style="border:1.5px solid ${active?'var(--color)':'#ccc'};background:${active?'var(--light)':'#fff'};border-radius:6px;padding:0.2rem 0.6rem;font-family:var(--font);cursor:pointer;font-size:0.8rem">${s}</button>`;
-              }).join('')}
             </div>
-            <div style="font-size:0.68rem;color:#888;margin-left:1.6rem;margin-top:0.25rem">เลือกได้สูงสุด 2 ไซส์ (${selSizes.length}/2)</div>` : ''}
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
+              ${sizes.map(s=>`<button onclick="_rsvpSetShirtDesignSize('${ev.id}','${escHtml(d.label)}','${s}');renderEvCard('${ev.id}')"
+                style="border:1.5px solid ${size===s?'var(--color)':'#ccc'};background:${size===s?'var(--light)':'#fff'};border-radius:6px;padding:0.2rem 0.6rem;font-family:var(--font);cursor:pointer;font-size:0.8rem">${s}</button>`).join('')}
+            </div>
+            ${size ? `<input class="rsvp-field" type="text" placeholder="ความต้องการเพิ่มเติม (ถ้ามี)" value="${escHtml(sel?.note||'')}"
+              oninput="_rsvpSetShirtNote('${ev.id}','${escHtml(d.label)}',this.value)"
+              style="width:100%;box-sizing:border-box;margin-top:0.4rem;font-size:0.78rem;padding:0.3rem 0.5rem">` : ''}
           </div>`;
         }).join('')}`;
     } else {
@@ -3170,6 +3185,7 @@ function renderRSVPForm(ev, rsvp) {
             style="border:1.5px solid ${curSize===s?'var(--color)':'#ccc'};background:${curSize===s?'var(--light)':'#fff'};border-radius:6px;padding:0.2rem 0.6rem;font-family:var(--font);cursor:pointer;font-size:0.8rem">${s}</button>`).join('')}
         </div>`;
     }
+    optRows += `</div>`;
   }
 
   const attendType = ev.attendType !== undefined ? ev.attendType : 'ร่วม/ไม่ร่วม';
@@ -3218,7 +3234,7 @@ function _fmtRsvpShirt(rsvp) {
   if (rsvp.shirts && rsvp.shirts.length) {
     return _dedupByLabel(rsvp.shirts).map(s => {
       const sizes = s.sizes || (s.size ? [s.size] : []);
-      return `${s.label}${sizes.length ? ` (${sizes.join(', ')})` : ''}`;
+      return `${s.label}${sizes.length ? ` (${sizes.join(', ')})` : ''}${s.note ? ` [${s.note}]` : ''}`;
     }).join(', ');
   }
   if (rsvp.shirtDesign) return `${rsvp.shirtDesign}${rsvp.shirtSize ? ` (${rsvp.shirtSize})` : ''}`;
@@ -3237,6 +3253,7 @@ function renderRSVPConfirmed(ev, rsvp) {
   if (rsvp.slipUrl) rows += `<div class="rsvp-done-row"><span class="rsvp-done-lbl">สลิป</span><span class="rsvp-done-val"><img class="rsvp-done-slip" src="${rsvp.slipUrl}" onclick="this.style.maxWidth=this.style.maxWidth?'':'100%'"></span></div>`;
   if (ev.companionField && (rsvp.companion != null || rsvp.childCompanion != null)) rows += `<div class="rsvp-done-row"><span class="rsvp-done-lbl">ผู้ติดตาม (ไม่รวมตัวเอง)</span><span class="rsvp-done-val">ผู้ใหญ่ ${escHtml(String(rsvp.companion??0))} คน · เด็ก(ต่ำกว่า 12 ปี) ${escHtml(String(rsvp.childCompanion??0))} คน</span></div>`;
   if (ev.roomField && rsvp.roomType) rows += `<div class="rsvp-done-row"><span class="rsvp-done-lbl">ห้องพัก</span><span class="rsvp-done-val">${escHtml(rsvp.roomType)}</span></div>`;
+  if (ev.travelField && rsvp.travelOpt) rows += `<div class="rsvp-done-row"><span class="rsvp-done-lbl">การเดินทาง</span><span class="rsvp-done-val">${escHtml(rsvp.travelOpt)}</span></div>`;
   if (ev.activityField && _fmtRsvpActivities(rsvp)) rows += `<div class="rsvp-done-row"><span class="rsvp-done-lbl">กิจกรรม</span><span class="rsvp-done-val">${escHtml(_fmtRsvpActivities(rsvp))}</span></div>`;
   if (ev.shirtField && _fmtRsvpShirt(rsvp)) rows += `<div class="rsvp-done-row"><span class="rsvp-done-lbl">เสื้อ</span><span class="rsvp-done-val">${escHtml(_fmtRsvpShirt(rsvp))}</span></div>`;
   const rankName = rsvp.rankName || '';
@@ -3275,24 +3292,19 @@ function _rsvpSetActivityCount(eventId, label, val) {
   if (item) item.count = n;
 }
 
-function _rsvpToggleShirt(eventId, label) {
+function _rsvpSetShirtDesignSize(eventId, label, size) {
   if (!_rsvpState[eventId]) _rsvpState[eventId] = {};
-  const prev = _rsvpState[eventId].shirts || [];
-  const idx = prev.findIndex(s => s.label === label);
-  const arr = prev.slice();
-  if (idx >= 0) arr.splice(idx, 1);
-  else arr.push({ label, sizes: [] });
+  const arr = (_rsvpState[eventId].shirts || []).slice();
+  const idx = arr.findIndex(s => s.label === label);
+  if (idx >= 0) arr[idx] = { ...arr[idx], label, size };
+  else arr.push({ label, size });
   _rsvpState[eventId].shirts = arr;
 }
 
-function _rsvpToggleShirtSize(eventId, label, size) {
+function _rsvpSetShirtNote(eventId, label, note) {
   const arr = _rsvpState[eventId]?.shirts || [];
   const item = arr.find(s => s.label === label);
-  if (!item) return;
-  if (!item.sizes) item.sizes = item.size ? [item.size] : [];
-  const idx = item.sizes.indexOf(size);
-  if (idx >= 0) item.sizes.splice(idx, 1);
-  else if (item.sizes.length < 2) item.sizes.push(size);
+  if (item) item.note = note;
 }
 
 function setRsvpAttend(eventId, attending) {
@@ -3321,6 +3333,14 @@ async function submitRSVP(eventId) {
   const attendType = ev?.attendType !== undefined ? ev.attendType : 'ร่วม/ไม่ร่วม';
   if (attendType && (st.attending === undefined || st.attending === null)) {
     if (statusEl) statusEl.textContent = 'กรุณาเลือกสถานะก่อน'; return;
+  }
+  if (st.attending !== false && ev?.shirtField && ev.shirtDesigns && ev.shirtDesigns.length) {
+    const shirts = st.shirts || [];
+    const missing = ev.shirtDesigns.filter(d => !shirts.find(s => s.label === d.label && s.size));
+    if (missing.length) {
+      if (statusEl) statusEl.textContent = 'กรุณาเลือกไซส์เสื้อให้ครบทุกแบบ';
+      return;
+    }
   }
   if (statusEl) statusEl.textContent = 'กำลังบันทึก...';
   try {
@@ -3353,6 +3373,7 @@ async function submitRSVP(eventId) {
       rsvpData.childCompanion = parseInt(st.childCompanion) || 0;
     }
     if (ev?.roomField) rsvpData.roomType = st.roomType || '';
+    if (ev?.travelField) rsvpData.travelOpt = st.travelOpt || '';
     if (ev?.activityField) rsvpData.activities = _dedupByLabel(st.activities || []);
     if (ev?.shirtField) {
       if (ev.shirtDesigns && ev.shirtDesigns.length) {
@@ -3380,8 +3401,9 @@ function editRSVP(eventId) {
       companion: rsvp.companion,
       childCompanion: rsvp.childCompanion,
       roomType: rsvp.roomType,
+      travelOpt: rsvp.travelOpt,
       activities: rsvp.activities || (rsvp.activityOpt ? [{ label: rsvp.activityOpt, count: 1 }] : []),
-      shirts: rsvp.shirts || (rsvp.shirtDesign ? [{ label: rsvp.shirtDesign, sizes: rsvp.shirtSize ? [rsvp.shirtSize] : [] }] : []),
+      shirts: rsvp.shirts || (rsvp.shirtDesign ? [{ label: rsvp.shirtDesign, size: rsvp.shirtSize || '' }] : []),
       shirtSize: rsvp.shirtSize,
       note: rsvp.note
     };
@@ -3613,7 +3635,9 @@ async function openRsvpSummary(eventId) {
     const evDoc = await db.collection('events').doc(eventId).get();
     const ev = evDoc.exists ? evDoc.data() : {};
     const rows = await _loadEventRSVPs(eventId);
-    const goRows = rows.filter(r => r.attending);
+    // ถ้าปิดการแสดงสถานะร่วม/ไม่ร่วมไว้ (attendType ว่าง) ไม่มี field attending ให้กรอง — นับทุกคนที่ตอบรับ
+    const attendType = ev.attendType !== undefined ? ev.attendType : 'ร่วม/ไม่ร่วม';
+    const goRows = attendType ? rows.filter(r => r.attending) : rows;
     const totalAll = rows.length;
     const totalGo = goRows.length;
 
@@ -3655,6 +3679,16 @@ async function openRsvpSummary(eventId) {
       html += types.map(t => barRow(t, counts[t], totalGo)).join('');
     }
 
+    if (ev.travelField && ev.travelOptions) {
+      hasSection = true;
+      const types = (ev.travelOptions || '').split('\n').map(s=>s.trim()).filter(Boolean);
+      const counts = {};
+      types.forEach(t => counts[t] = 0);
+      goRows.forEach(r => { if (r.travelOpt && counts[r.travelOpt] !== undefined) counts[r.travelOpt]++; });
+      html += `<div class="vote-results-section-title">การเดินทาง</div>`;
+      html += types.map(t => barRow(t, counts[t], totalGo)).join('');
+    }
+
     if (ev.shirtField) {
       hasSection = true;
       const sizes = ['S','M','L','XL','2XL','3XL','4XL'];
@@ -3665,7 +3699,7 @@ async function openRsvpSummary(eventId) {
           sizes.forEach(s => sizeCounts[s] = 0);
           let designCount = 0;
           goRows.forEach(r => {
-            const shirts = _dedupByLabel(r.shirts || (r.shirtDesign ? [{ label: r.shirtDesign, sizes: r.shirtSize ? [r.shirtSize] : [] }] : []));
+            const shirts = _dedupByLabel(r.shirts || (r.shirtDesign ? [{ label: r.shirtDesign, size: r.shirtSize || '' }] : []));
             const match = shirts.find(s => s.label === d.label);
             if (match) {
               designCount++;
@@ -3778,10 +3812,10 @@ async function openEventEditor(eventId) {
   document.getElementById('ev-ed-title').textContent = eventId ? 'แก้ไขกิจกรรม' : 'สร้างกิจกรรม';
   document.getElementById('ev-ed-status').textContent = '';
   // reset fields
-  ['ev-ed-name','ev-ed-date-start','ev-ed-date-end','ev-ed-desc','ev-ed-pay-opts','ev-ed-rooms','ev-ed-acts','ev-ed-note'].forEach(id => {
+  ['ev-ed-name','ev-ed-date-start','ev-ed-date-end','ev-ed-desc','ev-ed-pay-opts','ev-ed-rooms','ev-ed-travels','ev-ed-acts','ev-ed-note'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  ['ev-opt-payment','ev-opt-companion','ev-opt-room','ev-opt-activity','ev-opt-shirt','ev-opt-all-branches','ev-opt-show-note'].forEach(id => {
+  ['ev-opt-payment','ev-opt-companion','ev-opt-room','ev-opt-travel','ev-opt-activity','ev-opt-shirt','ev-opt-all-branches','ev-opt-show-note'].forEach(id => {
     const el = document.getElementById(id); if (el) el.checked = false;
   });
   const _atSel = document.getElementById('ev-opt-attend-type');
@@ -3836,9 +3870,10 @@ async function openEventEditor(eventId) {
           }
           if (n('ev-ed-pay-opts')) n('ev-ed-pay-opts').value = d.paymentOptions || '';
           if (n('ev-ed-rooms')) n('ev-ed-rooms').value = d.roomTypes || '';
+          if (n('ev-ed-travels')) n('ev-ed-travels').value = d.travelOptions || '';
           if (n('ev-ed-acts')) n('ev-ed-acts').value = d.activityOptions || '';
           if (n('ev-ed-note')) n('ev-ed-note').value = d.note || '';
-          const chks = { 'ev-opt-payment': d.paymentRequired, 'ev-opt-companion': d.companionField, 'ev-opt-room': d.roomField, 'ev-opt-activity': d.activityField, 'ev-opt-shirt': d.shirtField, 'ev-opt-show-note': d.showNote };
+          const chks = { 'ev-opt-payment': d.paymentRequired, 'ev-opt-companion': d.companionField, 'ev-opt-room': d.roomField, 'ev-opt-travel': d.travelField, 'ev-opt-activity': d.activityField, 'ev-opt-shirt': d.shirtField, 'ev-opt-show-note': d.showNote };
           const _as = n('ev-opt-attend-type'); if (_as) _as.value = d.attendType !== undefined ? d.attendType : 'ร่วม/ไม่ร่วม';
           Object.entries(chks).forEach(([k,v]) => { const el = n(k); if (el) el.checked = !!v; });
           const actMode = d.activityMode === 'multi' ? 'ev-act-mode-multi' : 'ev-act-mode-single';
@@ -3867,14 +3902,17 @@ async function openEventEditor(eventId) {
 function _toggleEvEdCond() {
   const payOn = document.getElementById('ev-opt-payment')?.checked;
   const roomOn = document.getElementById('ev-opt-room')?.checked;
+  const travelOn = document.getElementById('ev-opt-travel')?.checked;
   const actOn = document.getElementById('ev-opt-activity')?.checked;
   const shirtOn = document.getElementById('ev-opt-shirt')?.checked;
   const payGrp = document.getElementById('ev-ed-pay-grp');
   const roomGrp = document.getElementById('ev-room-grp');
+  const travelGrp = document.getElementById('ev-travel-grp');
   const actGrp = document.getElementById('ev-act-grp');
   const shirtGrp = document.getElementById('ev-shirt-grp');
   if (payGrp) payGrp.style.display = payOn ? '' : 'none';
   if (roomGrp) roomGrp.style.display = roomOn ? '' : 'none';
+  if (travelGrp) travelGrp.style.display = travelOn ? '' : 'none';
   if (actGrp) actGrp.style.display = actOn ? '' : 'none';
   if (shirtGrp) shirtGrp.style.display = shirtOn ? '' : 'none';
 }
@@ -3926,6 +3964,8 @@ async function saveEvent() {
       data.companionField = !!n('ev-opt-companion')?.checked;
       data.roomField = !!n('ev-opt-room')?.checked;
       data.roomTypes = n('ev-ed-rooms')?.value.trim() || '';
+      data.travelField = !!n('ev-opt-travel')?.checked;
+      data.travelOptions = n('ev-ed-travels')?.value.trim() || '';
       data.activityField = !!n('ev-opt-activity')?.checked;
       data.activityOptions = n('ev-ed-acts')?.value.trim() || '';
       data.activityMode = document.getElementById('ev-act-mode-multi')?.checked ? 'multi' : 'single';
@@ -3998,6 +4038,7 @@ async function exportEventRSVPsExcel(eventId) {
   if (ev.paymentRequired) headers.push('จำนวนเงิน (บาท)', 'สลิป');
   if (ev.companionField) { headers.push('ผู้ติดตาม(ผู้ใหญ่)'); headers.push('เด็กต่ำกว่า 12 ปี'); }
   if (ev.roomField) headers.push('ห้องพัก');
+  if (ev.travelField) headers.push('การเดินทาง');
   if (ev.activityField) headers.push('กิจกรรม');
   if (ev.shirtField) headers.push('เสื้อ');
   const _exAType = ev.attendType !== undefined ? ev.attendType : 'ร่วม/ไม่ร่วม';
@@ -4008,6 +4049,7 @@ async function exportEventRSVPsExcel(eventId) {
     if (ev.paymentRequired) { row.push(r.amount || ''); row.push(r.slipUrl ? r.slipUrl : ''); }
     if (ev.companionField) { row.push(r.companion ?? ''); row.push(r.childCompanion ?? ''); }
     if (ev.roomField) row.push(r.roomType || '');
+    if (ev.travelField) row.push(r.travelOpt || '');
     if (ev.activityField) row.push(_fmtRsvpActivities(r));
     if (ev.shirtField) row.push(_fmtRsvpShirt(r));
     row.push(r.note || '');
@@ -4028,6 +4070,7 @@ async function exportEventRSVPsPDF(eventId) {
   if (ev.paymentRequired) colHeaders.push('ค่าใช้จ่าย');
   if (ev.companionField) { colHeaders.push('ผู้ใหญ่'); colHeaders.push('เด็ก<12ปี'); }
   if (ev.roomField) colHeaders.push('ห้องพัก');
+  if (ev.travelField) colHeaders.push('การเดินทาง');
   if (ev.activityField) colHeaders.push('กิจกรรม');
   if (ev.shirtField) colHeaders.push('เสื้อ');
   const _pdfAType = ev.attendType !== undefined ? ev.attendType : 'ร่วม/ไม่ร่วม';
@@ -4038,6 +4081,7 @@ async function exportEventRSVPsPDF(eventId) {
     if (ev.paymentRequired) cells.push(r.amount||'');
     if (ev.companionField) { cells.push(String(r.companion??'')); cells.push(String(r.childCompanion??'')); }
     if (ev.roomField) cells.push(r.roomType||'');
+    if (ev.travelField) cells.push(r.travelOpt||'');
     if (ev.activityField) cells.push(_fmtRsvpActivities(r));
     if (ev.shirtField) cells.push(_fmtRsvpShirt(r));
     cells.push(r.note||'');
