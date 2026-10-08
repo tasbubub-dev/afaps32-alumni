@@ -1955,16 +1955,18 @@ async function _sha256Hex(str) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-function _enterApp() {
+async function _enterApp() {
   document.getElementById('pin-lock-screen').style.display = 'none';
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
-  loadUserProfile();
+  await loadUserProfile();
   loadMembers();
   loadMemberEditorMap();
   loadAppsScriptConfig();
   startContentConfig();
-  switchTab('pr');
+  // สมาชิกเหล่า ตร. เข้ามาแล้วเปิดหน้ากิจกรรมเป็นหน้าแรก เหล่าอื่นเปิดหน้าประชาสัมพันธ์ตามเดิม
+  const branch = await _fetchUserBranch();
+  switchTab(branch === 'ตร' ? 'events' : 'pr');
   logVisit();
   loadHeaderStats();
 }
