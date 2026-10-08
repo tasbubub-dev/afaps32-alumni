@@ -3098,7 +3098,7 @@ function renderRSVPForm(ev, rsvp) {
       <div ${dis}>
         <div style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap">
           <div>
-            <div class="rsvp-row-label" style="margin-bottom:0.25rem">ผู้ติดตาม(ผู้ใหญ่) (คน)</div>
+            <div class="rsvp-row-label" style="margin-bottom:0.25rem">ผู้ติดตาม(ไม่รวมตัวเอง) (คน)</div>
             <input class="rsvp-field" type="number" min="0" value="${companion}"
               oninput="_rsvpSetField('${ev.id}','companion',this.value)" style="width:80px">
           </div>
@@ -3183,7 +3183,7 @@ function renderRSVPForm(ev, rsvp) {
               ${sizes.map(s=>`<button onclick="_rsvpSetShirtDesignSize('${ev.id}','${escHtml(d.label)}','${s}');renderEvCard('${ev.id}')"
                 style="border:1.5px solid ${size===s?'var(--color)':'#ccc'};background:${size===s?'var(--light)':'#fff'};border-radius:6px;padding:0.2rem 0.6rem;font-family:var(--font);cursor:pointer;font-size:0.8rem">${s}</button>`).join('')}
             </div>
-            ${size ? `<input class="rsvp-field" type="text" placeholder="ความต้องการเพิ่มเติม (ถ้ามี)" value="${escHtml(sel?.note||'')}"
+            ${size ? `<input class="rsvp-field" type="text" placeholder="สำหรับผู้ที่ต้องการไซส์เสื้อที่ไม่เป็นไปตามมาตรฐาน" value="${escHtml(sel?.note||'')}"
               oninput="_rsvpSetShirtNote('${ev.id}','${escHtml(d.label)}',this.value)"
               style="width:100%;box-sizing:border-box;margin-top:0.4rem;font-size:0.78rem;padding:0.3rem 0.5rem">` : ''}` : ''}
           </div>`;
@@ -3239,6 +3239,15 @@ function _dedupByLabel(arr) {
 function _fmtRsvpActivities(rsvp) {
   if (rsvp.activities && rsvp.activities.length) {
     return _dedupByLabel(rsvp.activities).map(a => `${a.label}${a.count ? ` (${a.count} คน)` : ''}`).join(', ');
+  }
+  return rsvp.activityOpt || '';
+}
+// สำหรับไฟล์ export เท่านั้น — แสดงกิจกรรมที่เลือกล่าสุดค่าเดียว (รายการสุดท้ายหลังกันซ้ำ)
+function _fmtRsvpActivitiesLatest(rsvp) {
+  if (rsvp.activities && rsvp.activities.length) {
+    const deduped = _dedupByLabel(rsvp.activities);
+    const last = deduped[deduped.length - 1];
+    return last ? `${last.label}${last.count ? ` (${last.count} คน)` : ''}` : '';
   }
   return rsvp.activityOpt || '';
 }
@@ -4064,7 +4073,7 @@ async function exportEventRSVPsExcel(eventId) {
     if (ev.companionField) { row.push(r.companion ?? ''); row.push(r.childCompanion ?? ''); }
     if (ev.roomField) row.push(r.roomType || '');
     if (ev.travelField) row.push(r.travelOpt || '');
-    if (ev.activityField) row.push(_fmtRsvpActivities(r));
+    if (ev.activityField) row.push(_fmtRsvpActivitiesLatest(r));
     if (ev.shirtField) row.push(_fmtRsvpShirt(r));
     row.push(r.note || '');
     return row;
@@ -4096,7 +4105,7 @@ async function exportEventRSVPsPDF(eventId) {
     if (ev.companionField) { cells.push(String(r.companion??'')); cells.push(String(r.childCompanion??'')); }
     if (ev.roomField) cells.push(r.roomType||'');
     if (ev.travelField) cells.push(r.travelOpt||'');
-    if (ev.activityField) cells.push(_fmtRsvpActivities(r));
+    if (ev.activityField) cells.push(_fmtRsvpActivitiesLatest(r));
     if (ev.shirtField) cells.push(_fmtRsvpShirt(r));
     cells.push(r.note||'');
     const nameIdx = 1;
