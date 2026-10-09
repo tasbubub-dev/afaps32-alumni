@@ -452,7 +452,12 @@ body {
   font-size:0.75rem; font-weight:700; color:#888;
   text-transform:uppercase; letter-spacing:0.5px;
   margin-bottom:0.5rem; margin-top:1rem;
+  display:flex; align-items:center; justify-content:space-between;
+  cursor:pointer; user-select:none;
 }
+.admin-section-toggle { font-size:0.7rem; transition:transform 0.2s; flex-shrink:0; }
+.admin-section-label.collapsed .admin-section-toggle { transform:rotate(-90deg); }
+.admin-collapsed-hidden { display:none !important; }
 .vstat-total-line { font-size:0.85rem; color:#444; margin-bottom:0.6rem; }
 .vstat-total-line strong { color:var(--theme); font-size:1.05rem; }
 .vfreq-tabs { display:flex; gap:0.4rem; margin-bottom:0.6rem; }
@@ -1055,7 +1060,7 @@ body {
     </div>
 
     <!-- Admin-only sections (ซ่อนสำหรับ Editor) -->
-    <div id="admin-only-section" style="display:none">
+    <div id="admin-only-section" class="admin-section-boundary" style="display:none">
 
     <!-- กำหนด role จากชื่อสมาชิก (Admin เท่านั้น) -->
     <div id="admin-role-section">
@@ -1079,10 +1084,9 @@ body {
         </div>
         <button onclick="saveMemberRoleFromSearch()" style="margin-top:0.6rem;width:100%;background:var(--theme,#1a3a5c);color:#fff;border:none;border-radius:8px;padding:0.5rem;font-family:var(--font);font-size:0.9rem;cursor:pointer">บันทึก Role</button>
       </div>
-    </div>
-
-    <div style="margin-top:1.25rem">
-      <button onclick="openUserRolesOverlay()" style="width:100%;background:var(--theme,#1a3a5c);color:#fff;border:none;border-radius:8px;padding:0.6rem;font-family:var(--font);font-size:0.88rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.4rem">🔗 ผูกบัญชีกับสมาชิก / บทบาทผู้ใช้</button>
+      <div style="margin-top:1.25rem">
+        <button onclick="openUserRolesOverlay()" style="width:100%;background:var(--theme,#1a3a5c);color:#fff;border:none;border-radius:8px;padding:0.6rem;font-family:var(--font);font-size:0.88rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.4rem">🔗 ผูกบัญชีกับสมาชิก / บทบาทผู้ใช้</button>
+      </div>
     </div>
 
     <div class="admin-section-label" style="margin-top:1.25rem">สร้างบัญชีผู้ใช้ให้สมาชิก</div>
@@ -1158,43 +1162,6 @@ body {
         onclick="confirmDeleteMembers()">🗑️ ลบสมาชิกที่แสดงด้านบน</button>
     </div>
     <div id="del-members-status" style="font-size:0.8rem;color:#666;margin-top:0.4rem;text-align:center"></div>
-
-    <div class="admin-section-label" style="margin-top:1.25rem">นำเข้ารูปภาพ → Firebase Storage</div>
-    <div class="admin-tip-card" style="padding-bottom:0.75rem;font-size:0.78rem">
-      ดาวน์โหลดรูปสมาชิกจาก Google Drive แล้วเก็บใน Firebase Storage แยกตามเหล่า<br>
-      <code style="font-size:0.7rem">member-photos/{branch}/{id}.jpg</code><br>
-      <small style="color:#888">* รูปที่อยู่ใน Storage แล้วจะถูกข้าม · ต้องตั้ง Storage Rules ให้ Admin เขียนได้</small>
-    </div>
-    <button class="btn-import" id="btn-import-photos" onclick="importPhotosToStorage()" style="background:#1a5c3a">
-      🖼️ นำเข้ารูปภาพ → Firebase Storage
-    </button>
-    <div id="import-photos-status" style="font-size:0.8rem;color:#666;margin-top:0.4rem;text-align:center"></div>
-    <div id="import-photos-fail"></div>
-
-    <div class="admin-section-label" style="margin-top:1.25rem">นำเข้ารูปภาพจากไฟล์ในเครื่อง (เรียงตามลำดับ)</div>
-    <div class="admin-tip-card" style="padding-bottom:0.75rem;font-size:0.78rem">
-      เลือกไฟล์รูปที่ตั้งชื่อเป็นตัวเลขลำดับ เช่น 1.jpg, 2.jpg, 3.jpg (ข้ามเลขได้ ไม่ต้องเรียงติดกัน) ระบบจะจับคู่ตาม<strong>ลำดับไฟล์กับลำดับสมาชิกในเหล่าที่เลือก</strong> (เรียงตาม id จากน้อยไปมาก) ไม่ได้ใช้ตัวเลขในชื่อไฟล์จับคู่กับ id โดยตรง<br>
-      <small style="color:#888">* ไฟล์ที่ 1 → สมาชิกคนแรกของเหล่า, ไฟล์ที่ 2 → คนถัดไป ฯลฯ</small>
-    </div>
-    <div style="margin-bottom:0.5rem">
-      <select id="local-photo-branch" style="width:100%;padding:0.4rem 0.6rem;border:1.5px solid #ddd;border-radius:8px;font-family:var(--font);font-size:0.82rem">
-        <option value="ตร">ตร. (ตำรวจ)</option>
-        <option value="ทบ">ทบ. (กองทัพบก)</option>
-        <option value="ทอ">ทอ. (กองทัพอากาศ)</option>
-        <option value="ทร">ทร. (กองทัพเรือ)</option>
-      </select>
-    </div>
-    <label class="btn-import" style="background:#1a5c3a;cursor:pointer;display:block;text-align:center;margin:0">
-      📂 เลือกไฟล์รูปทั้งหมด
-      <input type="file" id="local-photo-files" accept="image/*" multiple style="display:none" onchange="handleLocalPhotoFiles(this)">
-    </label>
-    <div id="local-photo-preview" style="display:none;margin-top:0.6rem;background:#fff;border-radius:10px;padding:0.75rem;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
-      <div id="local-photo-list" style="font-size:0.75rem;color:#444;max-height:180px;overflow-y:auto;line-height:1.8"></div>
-      <button class="btn-import" id="btn-local-photo-import" style="background:#1a5c2a;margin-top:0.5rem" onclick="importLocalPhotos()">
-        ☁️ อัปโหลดรูปตามลำดับ
-      </button>
-    </div>
-    <div id="local-photo-status" style="font-size:0.8rem;color:#666;margin-top:0.4rem;text-align:center"></div>
 
     <div class="admin-section-label" style="margin-top:1.25rem">อัพเดท Sheet อัตโนมัติ (Google Apps Script)</div>
     <div class="admin-tip-card" style="padding-bottom:0.5rem;font-size:0.78rem">
@@ -1277,7 +1244,7 @@ function json(obj) {
     </div><!-- /admin-only-section -->
 
     <!-- ส่งออกรายชื่อสมาชิก (admin + editor) -->
-    <div id="admin-export-section" style="display:none">
+    <div id="admin-export-section" class="admin-section-boundary" style="display:none">
       <div class="admin-section-label" style="margin-top:1.25rem">ส่งออกรายชื่อสมาชิก</div>
       <div class="admin-tip-card" style="padding-bottom:0.5rem;font-size:0.78rem">
         ส่งออกข้อมูลสมาชิกทั้งหมดที่โหลดอยู่ในขณะนั้น<br>
@@ -1290,42 +1257,9 @@ function json(obj) {
       <div id="export-status" style="font-size:0.78rem;color:#666;margin-top:0.3rem;text-align:center"></div>
     </div>
 
-    <!-- นำเข้าข้อมูลจากไฟล์ Excel (admin + editor) -->
-    <div id="admin-excel-import-section" style="display:none">
-      <div class="admin-section-label" style="margin-top:1.25rem">นำเข้าข้อมูลจากไฟล์ Excel</div>
-      <div class="admin-tip-card" style="padding-bottom:0.75rem;font-size:0.78rem">
-        นำเข้าข้อมูลสมาชิกจากไฟล์ Excel (.xlsx / .xls) เข้า Firebase โดยตรง<br>
-        <small style="color:#888">* แถวแรกต้องเป็น header · ระบบจับคู่คอลัมน์อัตโนมัติจากชื่อหัวตาราง</small>
-      </div>
-      <div style="margin-bottom:0.5rem">
-        <label style="font-size:0.78rem;color:#555;display:block;margin-bottom:0.25rem">บังคับให้ทุกแถวในไฟล์นี้เป็นเหล่า (แนะนำถ้าไฟล์นี้เป็นข้อมูลเหล่าเดียวล้วน จะได้ไม่พึ่งการเดาจากยศ)</label>
-        <select id="excel-force-branch" style="width:100%;padding:0.4rem 0.6rem;border:1.5px solid #ddd;border-radius:8px;font-family:var(--font);font-size:0.82rem">
-          <option value="">-- ตรวจจับอัตโนมัติจากไฟล์/ยศ --</option>
-          <option value="ตร">ตร. (ตำรวจ)</option>
-          <option value="ทบ">ทบ. (กองทัพบก)</option>
-          <option value="ทอ">ทอ. (กองทัพอากาศ)</option>
-          <option value="ทร">ทร. (กองทัพเรือ)</option>
-        </select>
-      </div>
-      <label class="btn-import" style="background:#7b4a1a;cursor:pointer;display:block;text-align:center;margin:0">
-        📂 เลือกไฟล์ Excel
-        <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display:none" onchange="handleExcelFile(this)">
-      </label>
-      <div id="excel-preview-wrap" style="display:none;margin-top:0.6rem;background:#fff;border-radius:10px;padding:0.75rem;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
-        <div id="excel-col-map" style="font-size:0.76rem;margin-bottom:0.5rem;line-height:1.8;color:#444"></div>
-        <div style="overflow-x:auto;max-height:180px;overflow-y:auto;border:1px solid #eee;border-radius:6px">
-          <table id="excel-preview-table" style="border-collapse:collapse;font-size:0.74rem;width:100%"></table>
-        </div>
-        <div id="excel-row-count" style="font-size:0.78rem;color:#666;margin:0.4rem 0;text-align:center"></div>
-        <button class="btn-import" id="btn-excel-import" style="background:#1a5c2a" onclick="importExcelToFirebase()">
-          ☁️ นำเข้าข้อมูลจาก Excel → Firebase
-        </button>
-      </div>
-      <div id="excel-import-status" style="font-size:0.8rem;color:#666;margin-top:0.4rem;text-align:center"></div>
-    </div>
 
     <!-- ตั้งค่าประชาสัมพันธ์ + ภาพถ่าย (admin ทุกระดับ) -->
-    <div id="admin-content-section" style="display:none">
+    <div id="admin-content-section" class="admin-section-boundary" style="display:none">
       <div class="admin-section-label" style="margin-top:1.5rem">ตั้งค่าหน้าประชาสัมพันธ์</div>
       <div class="admin-tip-card" style="padding-bottom:0.5rem;font-size:0.78rem">เพิ่ม/แก้ไขประกาศที่แสดงในแท็บ ประชาสัมพันธ์</div>
       <button onclick="addPrItem()" style="width:100%;background:#e8f0fe;color:#1a3a5c;border:1.5px dashed #aac4f0;border-radius:8px;padding:0.5rem;font-family:var(--font);font-size:0.85rem;cursor:pointer;margin-bottom:0.25rem">+ เพิ่มประกาศใหม่</button>
@@ -4449,9 +4383,7 @@ async function importMembersToFirebase() {
   }
 }
 
-// ═══ IMPORT FROM EXCEL ═══
-var _excelRows = [];
-
+// ═══ SHEETJS LOADER (ใช้สำหรับส่งออก Excel) ═══
 async function _loadSheetJS() {
   if (window.XLSX) return;
   await new Promise(function(resolve, reject) {
@@ -4461,164 +4393,6 @@ async function _loadSheetJS() {
     s.onerror = function() { reject(new Error('โหลด SheetJS ไม่ได้ — กรุณาตรวจสอบอินเทอร์เน็ต')); };
     document.head.appendChild(s);
   });
-}
-
-function _excelCol(headers, keywords) {
-  for (var i = 0; i < headers.length; i++) {
-    var h = (headers[i] || '').toString().toLowerCase();
-    if (keywords.some(function(k){ return h.includes(k.toLowerCase()); })) return i;
-  }
-  return -1;
-}
-
-function _normalizePhone(val) {
-  if (!val && val !== 0) return '';
-  var s = val.toString().trim().replace(/[^0-9]/g, '');
-  if (s.length === 9) s = '0' + s;
-  return s;
-}
-
-async function handleExcelFile(input) {
-  var file = input.files[0];
-  if (!file) return;
-  var status = document.getElementById('excel-import-status');
-  var wrap   = document.getElementById('excel-preview-wrap');
-  status.textContent = '⏳ กำลังอ่านไฟล์...';
-  wrap.style.display = 'none';
-  _excelRows = [];
-  try {
-    await _loadSheetJS();
-    var buf  = await file.arrayBuffer();
-    var wb   = XLSX.read(buf, { type: 'array' });
-    var ws   = wb.Sheets[wb.SheetNames[0]];
-    var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-    if (rows.length < 2) { status.textContent = '❌ ไฟล์ว่างเปล่าหรือมีแค่ header'; return; }
-    var headers = rows[0].map(function(h){ return (h||'').toString().trim(); });
-    var cm = {
-      seq:      _excelCol(headers, ['ลำดับ','seq','#','no.']),
-      rank:     _excelCol(headers, ['ยศ','rank']),
-      fullname: _excelCol(headers, ['ชื่อ-นาม','ชื่อนาม','fullname','ชื่อ สกุล','ชื่อ-สกุล','ชื่อ']),
-      nickname: _excelCol(headers, ['ชื่อเล่น','nickname']),
-      branch:   _excelCol(headers, ['เหล่า','branch']),
-      position: _excelCol(headers, ['ตำแหน่ง','position']),
-      unit:     _excelCol(headers, ['หน่วย','unit']),
-      phone1:   _excelCol(headers, ['เบอร์1','โทร1','phone1','เบอร์โทร 1','เบอร์ 1','tel1']),
-      phone2:   _excelCol(headers, ['เบอร์2','โทร2','phone2','เบอร์โทร 2','เบอร์ 2','tel2']),
-      email:    _excelCol(headers, ['อีเมล','email']),
-      birthday: _excelCol(headers, ['วันเกิด','เกิด','birthday']),
-      lineId:   _excelCol(headers, ['line id','lineid','ไลน์','line']),
-      business: _excelCol(headers, ['ธุรกิจ','business','อาชีพ']),
-    };
-    if (cm.phone1 === -1) cm.phone1 = _excelCol(headers, ['เบอร์โทร','โทร','phone','tel']);
-    var lbl = {seq:'ลำดับ',rank:'ยศ',fullname:'ชื่อ-นามสกุล',nickname:'ชื่อเล่น',branch:'เหล่า',position:'ตำแหน่ง',unit:'หน่วย',phone1:'เบอร์โทร1',phone2:'เบอร์โทร2',email:'อีเมล์',birthday:'วันเดือนปีเกิด',lineId:'LINE ID',business:'ธุรกิจ',id:'ลำดับที่จะกำหนด'};
-    var mapHtml = '<strong>คอลัมน์ที่ตรวจพบ:</strong><br>';
-    Object.keys(cm).forEach(function(f){ if (cm[f]>=0) mapHtml += '<span style="color:#1a3a5c">▪ '+lbl[f]+'</span> ← <code>'+headers[cm[f]]+'</code>&nbsp;&nbsp;'; });
-    mapHtml += '<br><span style="color:#a05a00">⚠ ลำดับจะกำหนดให้อัตโนมัติต่อจากข้อมูลล่าสุดในระบบ เรียงตามลำดับแถวในไฟล์ (ไม่ใช้ค่าในคอลัมน์ "ลำดับ" ของไฟล์)</span>';
-    document.getElementById('excel-col-map').innerHTML = mapHtml;
-
-    // หาเลขลำดับสูงสุดที่มีอยู่แล้วใน Firebase เพื่อนับต่อ ไม่ให้ id ชนกับข้อมูลเดิม
-    status.textContent = '⏳ กำลังตรวจสอบลำดับล่าสุดในระบบ...';
-    var maxId = 0;
-    try {
-      var memSnap = await db.collection('members').get();
-      memSnap.forEach(function(d) {
-        var n = parseInt(d.id, 10);
-        if (!isNaN(n) && n > maxId) maxId = n;
-      });
-    } catch(e) {}
-
-    var forceBranch = (document.getElementById('excel-force-branch')?.value || '').trim();
-    if (forceBranch) {
-      mapHtml += '<br><span style="color:#1a5c2a">✔ บังคับทุกแถวเป็นเหล่า <strong>'+forceBranch+'</strong> ไม่ใช้คอลัมน์เหล่า/การเดาจากยศ</span>';
-      document.getElementById('excel-col-map').innerHTML = mapHtml;
-    }
-
-    var seqCounter = 0;
-    var skippedRows = [];
-    for (var i = 1; i < rows.length; i++) {
-      var r = rows[i];
-      var fn = cm.fullname>=0 ? (r[cm.fullname]||'').toString().trim() : '';
-      if (!fn) { skippedRows.push(i + 1); continue; }
-      seqCounter++;
-      var seq = String(maxId + seqCounter);
-      _excelRows.push({
-        id:       seq,
-        rank:     cm.rank>=0     ? (r[cm.rank]||'').toString().trim()     : '',
-        fullname: fn,
-        nickname: cm.nickname>=0 ? (r[cm.nickname]||'').toString().trim() : '',
-        branch:   forceBranch || (cm.branch>=0   ? _normBranch((r[cm.branch]||'').toString())   : detectBranch(cm.rank>=0 ? (r[cm.rank]||'').toString().trim() : '')),
-        position: cm.position>=0 ? (r[cm.position]||'').toString().trim() : '',
-        unit:     cm.unit>=0     ? (r[cm.unit]||'').toString().trim()     : '',
-        phone1:   _normalizePhone(cm.phone1>=0 ? r[cm.phone1] : ''),
-        phone2:   _normalizePhone(cm.phone2>=0 ? r[cm.phone2] : ''),
-        email:    cm.email>=0    ? (r[cm.email]||'').toString().trim()    : '',
-        birthday: cm.birthday>=0 ? (r[cm.birthday]||'').toString().trim() : '',
-        lineId:   cm.lineId>=0   ? (r[cm.lineId]||'').toString().trim()   : '',
-        business: cm.business>=0 ? (r[cm.business]||'').toString().trim() : '',
-        photoUrl: '', shirt: ''
-      });
-    }
-    var pf = ['id','rank','fullname','nickname','branch','position','unit','phone1','email'];
-    var th = '<thead><tr style="background:#1a3a5c;color:#fff;position:sticky;top:0">';
-    pf.forEach(function(f){ th += '<th style="padding:3px 6px;white-space:nowrap;font-weight:600">'+lbl[f]+'</th>'; });
-    th += '</tr></thead><tbody>';
-    _excelRows.slice(0,5).forEach(function(m,i){
-      th += '<tr style="'+(i%2?'background:#f5f8ff':'')+'">';
-      pf.forEach(function(f){ th += '<td style="padding:3px 6px;white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis">'+(m[f]||'')+'</td>'; });
-      th += '</tr>';
-    });
-    th += '</tbody>';
-    document.getElementById('excel-preview-table').innerHTML = th;
-    var _idRange = _excelRows.length ? (_excelRows[0].id + '–' + _excelRows[_excelRows.length-1].id) : '';
-    var countText = 'พบข้อมูล '+_excelRows.length+' รายการ · จะกำหนดลำดับ '+_idRange+' (แสดงตัวอย่าง 5 แถวแรก)';
-    if (skippedRows.length) {
-      countText += '<br><span style="color:#c0392b">⚠ ข้าม '+skippedRows.length+' แถว (ไม่มีชื่อ-นามสกุลในคอลัมน์ที่ตรวจพบ) — แถวที่ '+skippedRows.join(', ')+' ในไฟล์ Excel (นับรวมแถวหัวข้อเป็นแถวที่ 1)</span>';
-    }
-    document.getElementById('excel-row-count').innerHTML = countText;
-    document.getElementById('btn-excel-import').disabled = false;
-    document.getElementById('btn-excel-import').textContent = '☁️ นำเข้าข้อมูลจาก Excel → Firebase';
-    wrap.style.display = 'block';
-    status.textContent = '';
-  } catch(e) {
-    status.textContent = '❌ ' + e.message;
-    console.error(e);
-  }
-}
-
-async function importExcelToFirebase() {
-  if (!_excelRows.length) { showToast('ยังไม่มีข้อมูล'); return; }
-  if (!confirm('นำเข้าข้อมูล '+_excelRows.length+' คน เข้า Firebase?\nจะเขียนทับข้อมูลที่มี id ซ้ำ')) return;
-  var btn    = document.getElementById('btn-excel-import');
-  var status = document.getElementById('excel-import-status');
-  btn.disabled = true;
-  btn.textContent = '⏳ กำลังนำเข้า...';
-  var BATCH = 499, imported = 0;
-  try {
-    for (var i = 0; i < _excelRows.length; i += BATCH) {
-      var batch = db.batch();
-      _excelRows.slice(i, i+BATCH).forEach(function(m){
-        batch.set(db.collection('members').doc(m.id), {
-          id:m.id, photoUrl:m.photoUrl||'', rank:m.rank||'', fullname:m.fullname||'',
-          nickname:m.nickname||'', position:m.position||'', unit:m.unit||'',
-          phone1:m.phone1||'', phone2:m.phone2||'', business:m.business||'',
-          shirt:m.shirt||'', email:m.email||'', birthday:m.birthday||'', lineId:m.lineId||'',
-          branch:m.branch||'', importedAt:firebase.firestore.FieldValue.serverTimestamp()
-        });
-      });
-      await batch.commit();
-      imported += Math.min(BATCH, _excelRows.length - i);
-      status.textContent = 'นำเข้าแล้ว '+imported+'/'+_excelRows.length+' คน...';
-    }
-    status.textContent = '✓ นำเข้าครบ '+_excelRows.length+' คน จาก Excel → Firebase';
-    btn.textContent = '✓ นำเข้าแล้ว';
-    showToast('นำเข้า '+_excelRows.length+' คน จาก Excel แล้ว ✓');
-  } catch(e) {
-    status.textContent = '❌ เกิดข้อผิดพลาด: ' + e.message;
-    btn.disabled = false;
-    btn.textContent = '☁️ นำเข้าข้อมูลจาก Excel → Firebase';
-    showToast('เกิดข้อผิดพลาด: ' + e.message);
-    console.error(e);
-  }
 }
 
 // ═══ DELETE MEMBERS (search by id / branch / name) ═══
@@ -4711,160 +4485,6 @@ async function confirmDeleteMembers() {
     btn.disabled = false;
     console.error(e);
   }
-}
-
-// ═══ IMPORT PHOTOS → FIREBASE STORAGE ═══
-function _extractDriveId(url) {
-  if (!url) return null;
-  const m = url.match(/id=([^&\s]+)/);
-  return m ? m[1] : null;
-}
-
-// ดาวน์โหลดรูปโดยลอง 2 วิธี: direct fetch → Apps Script proxy
-async function _fetchPhotoBlob(photoUrl) {
-  // วิธี 1: direct fetch (ใช้ได้กับไฟล์ที่ share public)
-  try {
-    const resp = await fetch(photoUrl, { credentials: 'omit', mode: 'cors' });
-    if (resp.ok) {
-      const blob = await resp.blob();
-      if (blob.size > 500) return { blob, via: 'direct' };
-    }
-  } catch(_) { /* ลอง proxy ต่อ */ }
-
-  // วิธี 2: ผ่าน Apps Script proxy (เจ้าของ Drive file)
-  if (_appsScriptUrl) {
-    const driveId = _extractDriveId(photoUrl);
-    if (driveId) {
-      const baseUrl = _appsScriptUrl.split('?')[0];
-      const resp = await fetch(`${baseUrl}?action=photo&id=${encodeURIComponent(driveId)}`);
-      const json = await resp.json();
-      if (json.ok && json.data) {
-        const byteStr = atob(json.data);
-        const arr = new Uint8Array(byteStr.length);
-        for (let i = 0; i < byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
-        return { blob: new Blob([arr], { type: json.type || 'image/jpeg' }), via: 'proxy' };
-      }
-      throw new Error(json.error || 'proxy ตอบไม่ได้');
-    }
-  }
-  throw new Error('ดาวน์โหลดไม่ได้ (ไม่ public / ไม่มี Apps Script URL)');
-}
-
-async function importPhotosToStorage() {
-  if (!allMembers.length) { showToast('ยังไม่มีข้อมูลสมาชิก'); return; }
-  const btn    = document.getElementById('btn-import-photos');
-  const status = document.getElementById('import-photos-status');
-  const failEl = document.getElementById('import-photos-fail');
-  if (!confirm(`นำเข้ารูปภาพจาก Google Drive → Firebase Storage?\nอาจใช้เวลาหลายนาที`)) return;
-  btn.disabled = true;
-  if (failEl) failEl.innerHTML = '';
-  let ok = 0, skip = 0;
-  const failList = [];
-  const total = allMembers.length;
-  for (let i = 0; i < allMembers.length; i++) {
-    const m = allMembers[i];
-    status.textContent = `กำลังนำเข้า ${i+1}/${total} — ${m.fullname || m.id}`;
-    if (!m.photoUrl) { skip++; continue; }
-    if (m.photoUrl.includes('firebasestorage.googleapis.com')) { skip++; continue; }
-    try {
-      const { blob } = await _fetchPhotoBlob(m.photoUrl);
-      const path = `member-photos/${m.branch || 'unknown'}/${m.id}.jpg`;
-      const ref = storage.ref(path);
-      await ref.put(blob, { contentType: blob.type || 'image/jpeg' });
-      const downloadUrl = await ref.getDownloadURL();
-      await db.collection('memberOverrides').doc(m.id).set({ photoUrl: downloadUrl }, { merge: true });
-      try { await db.collection('members').doc(m.id).set({ photoUrl: downloadUrl }, { merge: true }); } catch(_) {}
-      allMembers[i] = { ...m, photoUrl: downloadUrl };
-      ok++;
-    } catch(e) {
-      console.warn(`[photo] ${m.id} ${m.fullname}:`, e.message);
-      failList.push({ id: m.id, name: `${m.rank} ${m.fullname}`.trim(), err: e.message });
-    }
-  }
-  btn.disabled = false;
-  status.textContent = `✓ นำเข้า ${ok} · ข้าม ${skip} · ผิดพลาด ${failList.length} คน`;
-  if (failEl && failList.length) {
-    failEl.innerHTML = `<div style="font-size:0.72rem;color:#c00;margin-top:0.4rem;max-height:120px;overflow-y:auto;background:#fff5f5;border-radius:6px;padding:6px 8px">
-      <strong>ไม่สำเร็จ ${failList.length} คน:</strong><br>
-      ${failList.map(f => `• ${f.name} — <span style="color:#888">${escHtml(f.err)}</span>`).join('<br>')}
-    </div>`;
-  }
-  showToast(`นำเข้ารูปภาพ ${ok} คน ✓`);
-  if (ok > 0) filterAndRender();
-}
-
-// ═══ นำเข้ารูปภาพจากไฟล์ในเครื่อง (จับคู่ตามลำดับจริง เลขไฟล์ = ตำแหน่งที่เท่าไหร่ของเหล่า) ═══
-let _localPhotoByPos = {}; // ตำแหน่ง (1-indexed) → File
-
-function _localPhotoBranchMembers() {
-  const branch = document.getElementById('local-photo-branch').value;
-  return allMembers
-    .filter(m => _normBranch(m.branch) === branch)
-    .sort((a, b) => (parseInt(a.id, 10) || 0) - (parseInt(b.id, 10) || 0));
-}
-
-function handleLocalPhotoFiles(input) {
-  const files = Array.from(input.files || []);
-  input.value = '';
-  if (!files.length) return;
-  _localPhotoByPos = {};
-  const unmatched = [];
-  files.forEach(f => {
-    const num = parseInt((f.name.match(/^(\d+)/) || [])[1], 10);
-    if (isNaN(num)) { unmatched.push(f.name); return; }
-    _localPhotoByPos[num] = f;
-  });
-  const branchMembers = _localPhotoBranchMembers();
-  const listEl = document.getElementById('local-photo-list');
-  const rows = branchMembers.map((m, idx) => {
-    const pos = idx + 1;
-    const f = _localPhotoByPos[pos];
-    return f
-      ? `${pos}. ${escHtml(f.name)} → ${escHtml(m.rank||'')} ${escHtml(m.fullname||'')} (id ${m.id})`
-      : `<span style="color:#aaa">${pos}. (ไม่มีไฟล์ลำดับนี้) → ${escHtml(m.rank||'')} ${escHtml(m.fullname||'')} — คงรูปเดิมไว้</span>`;
-  });
-  if (unmatched.length) rows.push(`<span style="color:#c00">ไฟล์ที่ไม่มีเลขนำหน้า (ข้าม): ${unmatched.map(escHtml).join(', ')}</span>`);
-  const matchCount = branchMembers.filter((_, i) => _localPhotoByPos[i+1]).length;
-  listEl.innerHTML = `<strong>จับคู่ได้ ${matchCount} จาก ${branchMembers.length} คน</strong><br>` + rows.join('<br>');
-  document.getElementById('local-photo-preview').style.display = 'block';
-  document.getElementById('local-photo-status').textContent = '';
-}
-
-async function importLocalPhotos() {
-  const branch = document.getElementById('local-photo-branch').value;
-  const branchMembers = _localPhotoBranchMembers();
-  const pairs = branchMembers.map((m, idx) => ({ m, f: _localPhotoByPos[idx+1] })).filter(p => p.f);
-  if (!pairs.length) { showToast('ไม่มีคู่ที่จับคู่ได้'); return; }
-  if (!confirm(`อัปโหลดรูป ${pairs.length} รูป ให้สมาชิกเหล่า ${branch} ตามตำแหน่งลำดับที่จับคู่ได้?\nคนที่ไม่มีไฟล์ลำดับตรงกันจะคงรูปเดิมไว้ ไม่แตะต้อง`)) return;
-
-  const btn = document.getElementById('btn-local-photo-import');
-  const status = document.getElementById('local-photo-status');
-  btn.disabled = true;
-  let ok = 0;
-  const failList = [];
-  for (let i = 0; i < pairs.length; i++) {
-    const { m, f } = pairs[i];
-    status.textContent = `กำลังอัปโหลด ${i+1}/${pairs.length} — ${m.fullname || m.id}`;
-    try {
-      const dataUrl = await compressImage(f, 800, 0.82);
-      const path = `member-photo/${branch}/${m.id}.jpg`;
-      const ref = storage.ref(path);
-      await ref.putString(dataUrl, 'data_url');
-      const downloadUrl = await ref.getDownloadURL();
-      await db.collection('memberOverrides').doc(m.id).set({ photoUrl: downloadUrl }, { merge: true });
-      await db.collection('members').doc(m.id).set({ photoUrl: downloadUrl }, { merge: true });
-      const idx = allMembers.findIndex(x => x.id === m.id);
-      if (idx !== -1) allMembers[idx] = { ...allMembers[idx], photoUrl: downloadUrl };
-      ok++;
-    } catch(e) {
-      failList.push(`${m.fullname || m.id}: ${e.message}`);
-    }
-  }
-  btn.disabled = false;
-  status.textContent = `✓ อัปโหลดสำเร็จ ${ok}/${pairs.length} คน` + (failList.length ? ` · ผิดพลาด ${failList.length} คน` : '');
-  if (failList.length) console.warn('[importLocalPhotos] failures:', failList);
-  showToast(`อัปโหลดรูป ${ok} คน ✓`);
-  if (ok > 0) filterAndRender();
 }
 
 // ═══ PROVISION MEMBER ACCOUNTS ═══
@@ -5002,7 +4622,32 @@ async function saveMemberRoleFromSearch() {
 }
 
 // ═══ ADMIN PAGE ═══
+function _setupAdminAccordion() {
+  const container = document.getElementById('page-admin');
+  if (!container) return;
+  container.querySelectorAll('.admin-section-label').forEach(label => {
+    if (label.querySelector('.admin-section-toggle')) return; // ตั้งค่าไปแล้ว
+    const arrow = document.createElement('span');
+    arrow.className = 'admin-section-toggle';
+    arrow.textContent = '▼';
+    label.appendChild(arrow);
+    label.addEventListener('click', () => _toggleAdminSection(label));
+    _toggleAdminSection(label); // ค่าเริ่มต้น: ย่อทุกหัวข้อไว้ก่อน
+  });
+}
+
+function _toggleAdminSection(label) {
+  const collapsed = label.classList.toggle('collapsed');
+  let el = label.nextElementSibling;
+  while (el && !el.classList.contains('admin-section-label') && !el.classList.contains('admin-section-boundary')) {
+    // ใช้คลาสแทนการตั้ง inline style ตรงๆ กันชนกับ display:none ที่ตรรกะอื่นควบคุมอยู่ (เช่น panel ที่โชว์ทีหลัง)
+    el.classList.toggle('admin-collapsed-hidden', collapsed);
+    el = el.nextElementSibling;
+  }
+}
+
 async function loadAdminPage() {
+  _setupAdminAccordion();
   const adminOnly = isAdmin();
   // Admin-only sections (ผูกบัญชี, role, sync, apps script)
   const adminOnlySection = document.getElementById('admin-only-section');
@@ -5010,9 +4655,6 @@ async function loadAdminPage() {
   // Export section: Admin + Editor
   const exportSection = document.getElementById('admin-export-section');
   if (exportSection) exportSection.style.display = (adminOnly || isEditor()) ? 'block' : 'none';
-  // Excel import section: Admin เท่านั้น
-  const excelImportSection = document.getElementById('admin-excel-import-section');
-  if (excelImportSection) excelImportSection.style.display = adminOnly ? 'block' : 'none';
   // Content section (ประชาสัมพันธ์ + ลิงค์ภาพถ่าย): Admin + Editor
   const contentSection = document.getElementById('admin-content-section');
   if (contentSection) contentSection.style.display = (adminOnly || isEditor()) ? 'block' : 'none';
