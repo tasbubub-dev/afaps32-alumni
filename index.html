@@ -1893,14 +1893,16 @@ async function _enterApp() {
   document.getElementById('pin-lock-screen').style.display = 'none';
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
+  // ให้ข้อมูลหน้าประชาสัมพันธ์ยิงออกไปก่อนเป็นอันดับแรก เพื่อให้เห็นเนื้อหาเร็วที่สุด
+  startContentConfig();
+  // รอโปรไฟล์เพื่อรู้เหล่า: สมาชิกเหล่า ตร. เปิดหน้ากิจกรรมเป็นหน้าแรก เหล่าอื่นเปิดหน้าประชาสัมพันธ์ตามเดิม
   await loadUserProfile();
+  const branch = await _fetchUserBranch();
+  switchTab(branch === 'ตร' ? 'events' : 'pr');
+  // จากนั้นค่อยตามด้วยข้อมูลทำเนียบรุ่นและส่วนอื่นๆ ของแอป
   loadMembers();
   loadMemberEditorMap();
   loadAppsScriptConfig();
-  startContentConfig();
-  // สมาชิกเหล่า ตร. เข้ามาแล้วเปิดหน้ากิจกรรมเป็นหน้าแรก เหล่าอื่นเปิดหน้าประชาสัมพันธ์ตามเดิม
-  const branch = await _fetchUserBranch();
-  switchTab(branch === 'ตร' ? 'events' : 'pr');
   logVisit();
   loadHeaderStats();
 }
@@ -2335,12 +2337,11 @@ function _applyOverrides(base, overrides) {
 
 async function loadMembers() {
   try {
-    // โหลด overrides เสมอ (รูปภาพ + การแก้ไขผ่านแอป)
-    let overrides = {};
-    try {
-      const snap = await db.collection('memberOverrides').get();
-      snap.forEach(doc => { overrides[doc.id] = doc.data(); });
-    } catch(fe) { console.warn('memberOverrides ไม่พร้อม:', fe.message); }
+    // โหลด overrides (รูปภาพ + การแก้ไขผ่านแอป) แบบขนานไปพร้อมกัน — ไม่รอให้เสร็จก่อนค่อยแสดงรายชื่อ
+    // เพื่อให้ข้อมูลสมาชิกหลัก (ส่วนที่ถูกนำมาแสดงจริง) ขึ้นให้เห็นเร็วที่สุด แล้วค่อย patch ทับทีหลัง
+    const overridesPromise = db.collection('memberOverrides').get()
+      .then(snap => { const o = {}; snap.forEach(doc => { o[doc.id] = doc.data(); }); return o; })
+      .catch(fe => { console.warn('memberOverrides ไม่พร้อม:', fe.message); return {}; });
 
     // ── ลองโหลดจาก Firestore ก่อน (บังคับดึงจาก server สดๆ ไม่ใช้ cache เก่า) ──
     let fromFirestore = false;
@@ -2352,7 +2353,7 @@ async function loadMembers() {
             const d = doc.data();
             if (!d.branch) d.branch = detectBranch(d.rank);
             if (!d.seq) d.seq = d.id;
-            return _applyOverrides(d, overrides);
+            return d;
           })
           .sort((a, b) => Number(a.id) - Number(b.id));
         fromFirestore = true;
@@ -2390,15 +2391,24 @@ async function loadMembers() {
             birthday: (birthdayColIdx >= 0 ? r[birthdayColIdx] : '') || ''
           };
           base.branch = detectBranch(base.rank);
-          return _applyOverrides(base, overrides);
+          return base;
         });
       console.log(`[loadMembers] Sheet CSV: ${allMembers.length} คน`);
     }
 
+    // แสดงผลทันทีด้วยข้อมูลสมาชิกหลัก โดยยังไม่ต้องรอ overrides
     populateUnitFilter();
     applyTheme(currentBranch);
     updateHeaderSub(currentBranch);
     filterAndRender();
+
+    // overrides มาถึงเมื่อไหร่ค่อย patch ทับแล้วเรนเดอร์ซ้ำ (รูปที่แก้ไขเอง ฯลฯ)
+    const overrides = await overridesPromise;
+    if (Object.keys(overrides).length) {
+      allMembers = allMembers.map(m => _applyOverrides(m, overrides));
+      filterAndRender();
+    }
+
     await checkAutoLink();
   } catch(e) {
     showEmptyState('ไม่สามารถโหลดข้อมูลได้ กรุณาตั้งค่า SHEETS_CSV_URL');
