@@ -851,6 +851,22 @@ body {
   </div>
 </div>
 
+<div class="modal-overlay" id="ios-install-overlay" style="align-items:center" onclick="if(event.target===this) closeIosInstallHelp()">
+  <div class="login-card" style="max-width:340px;margin:0 1rem">
+    <h2>📲 ติดตั้งแอปลงหน้าจอโฮม</h2>
+    <p style="font-size:0.85rem;color:#555;line-height:1.7;margin:0.5rem 0">
+      iOS ไม่รองรับการติดตั้งอัตโนมัติ กรุณาทำตามขั้นตอนนี้ใน <strong>Safari</strong>:
+    </p>
+    <ol style="font-size:0.85rem;color:#333;line-height:1.9;padding-left:1.2rem;margin:0.5rem 0">
+      <li>แตะไอคอน <strong>แชร์</strong> (สี่เหลี่ยมมีลูกศรชี้ขึ้น ⬆️) แถบด้านล่าง (หรือด้านบนของ iPad)</li>
+      <li>เลื่อนหาแล้วแตะ <strong>"เพิ่มไปยังหน้าจอโฮม"</strong> (Add to Home Screen)</li>
+      <li>แตะ <strong>"เพิ่ม"</strong> (Add) มุมขวาบน</li>
+    </ol>
+    <p style="font-size:0.75rem;color:#999;margin:0.5rem 0">*ต้องเปิดผ่าน Safari เท่านั้น — เบราว์เซอร์อื่นบน iOS (เช่น Chrome) ไม่รองรับ</p>
+    <button class="btn-login" onclick="closeIosInstallHelp()">เข้าใจแล้ว</button>
+  </div>
+</div>
+
 <div id="pin-lock-screen" style="display:none;min-height:100vh;background:var(--theme);flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;position:relative;overflow-x:hidden">
   <img class="login-logo" src="logoafaps.png" alt="โลโก้" style="width:30vw;height:30vw;max-width:120px;max-height:120px" onerror="this.style.display='none'">
   <div class="login-card" style="max-width:340px">
@@ -1560,8 +1576,17 @@ function json(obj) {
 <div class="toast" id="toast"></div>
 
 <script>
-// ═══ PWA INSTALL PROMPT (Android/Chrome เท่านั้น — iOS Safari ไม่รองรับ) ═══
+// ═══ PWA INSTALL PROMPT ═══
+// Android/Chromium: ใช้ beforeinstallprompt (ติดตั้งอัตโนมัติผ่าน dialog ของเบราว์เซอร์)
+// iOS Safari: ไม่รองรับ beforeinstallprompt — ต้องแสดงขั้นตอนติดตั้งด้วยมือแทน
 let _deferredInstallPrompt = null;
+function _isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 13+ รายงานเป็น Mac
+}
+function _isStandaloneApp() {
+  return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+}
 window.addEventListener('beforeinstallprompt', function(e) {
   e.preventDefault();
   _deferredInstallPrompt = e;
@@ -1573,13 +1598,26 @@ window.addEventListener('appinstalled', function() {
   var btn = document.getElementById('acct-menu-install');
   if (btn) btn.style.display = 'none';
 });
+if (_isIOS() && !_isStandaloneApp()) {
+  var _iosInstallBtn = document.getElementById('acct-menu-install');
+  if (_iosInstallBtn) _iosInstallBtn.style.display = 'block';
+}
 async function installApp() {
-  if (!_deferredInstallPrompt) return;
-  _deferredInstallPrompt.prompt();
-  await _deferredInstallPrompt.userChoice;
-  _deferredInstallPrompt = null;
-  var btn = document.getElementById('acct-menu-install');
-  if (btn) btn.style.display = 'none';
+  if (_deferredInstallPrompt) {
+    _deferredInstallPrompt.prompt();
+    await _deferredInstallPrompt.userChoice;
+    _deferredInstallPrompt = null;
+    var btn = document.getElementById('acct-menu-install');
+    if (btn) btn.style.display = 'none';
+    return;
+  }
+  if (_isIOS()) { openIosInstallHelp(); return; }
+}
+function openIosInstallHelp() {
+  document.getElementById('ios-install-overlay').classList.add('open');
+}
+function closeIosInstallHelp() {
+  document.getElementById('ios-install-overlay').classList.remove('open');
 }
 
 // ═══ CONFIG ═══
@@ -4521,13 +4559,17 @@ async function searchMembersToDelete() {
   var filterBr  = document.getElementById('del-filter-branch').value;
   var filterNm  = document.getElementById('del-filter-name').value.trim().toLowerCase();
 
+  // เคลียร์รายการที่เคยค้นหา/เลือกไว้ก่อนทุกครั้ง กันเผลอลบรายการเก่าซ้ำ
+  preview.style.display = 'none';
+  listEl.innerHTML = '';
+  countEl.textContent = '';
+  _delCandidates = [];
+
   if (!filterId && !filterBr && !filterNm) {
     status.textContent = '⚠️ กรุณาระบุเงื่อนไขอย่างน้อย 1 ข้อ';
     return;
   }
   status.textContent = '⏳ กำลังค้นหา...';
-  preview.style.display = 'none';
-  _delCandidates = [];
 
   try {
     var snap = await db.collection('members').get();
@@ -5628,6 +5670,20 @@ async function savePrCommentEdit(commentDocId, ta, textEl, editBtn) {
   }
 }
 
+// เทียบเนื้อหาประกาศ (ไม่รวม _idx) ว่าเปลี่ยนแปลงจากที่บันทึกไว้เดิมหรือไม่
+function _prItemDataEqual(a, b) {
+  if (!a || !b) return false;
+  if ((a.date||'') !== (b.date||'')) return false;
+  if ((a.dateISO||'') !== (b.dateISO||'')) return false;
+  if ((a.title||'') !== (b.title||'')) return false;
+  if ((a.body||'') !== (b.body||'')) return false;
+  if ((a.creatorUid||'') !== (b.creatorUid||'')) return false;
+  const ai = a.images || [], bi = b.images || [];
+  if (ai.length !== bi.length) return false;
+  for (let k = 0; k < ai.length; k++) if (ai[k] !== bi[k]) return false;
+  return true;
+}
+
 async function savePrItems() {
   const statusEl = document.getElementById('pr-save-status');
   statusEl.textContent = 'กำลังบันทึก...';
@@ -5643,13 +5699,18 @@ async function savePrItems() {
       .get();
     const keepIds = new Set(_prItems.map((_, i) => _prDocId(i)));
     const deletions = [];
-    existingSnap.docs.forEach(d => { if (!keepIds.has(d.id)) deletions.push(db.collection('config').doc(d.id).delete()); });
+    const existingDataById = {};
+    existingSnap.docs.forEach(d => {
+      existingDataById[d.id] = d.data();
+      if (!keepIds.has(d.id)) deletions.push(db.collection('config').doc(d.id).delete());
+    });
     if (deletions.length) await Promise.all(deletions);
 
-    // บันทึกแต่ละประกาศใน config/prItem_NNN
+    // บันทึกเฉพาะประกาศที่มีการเปลี่ยนแปลงจริงใน config/prItem_NNN
+    let savedCount = 0;
     for (let i = 0; i < _prItems.length; i++) {
       const item = _prItems[i];
-      statusEl.textContent = `กำลังบันทึก ${i+1}/${_prItems.length}...`;
+      statusEl.textContent = `กำลังตรวจสอบ ${i+1}/${_prItems.length}...`;
 
       const images = [];
       for (const src of (item.images || [])) {
@@ -5677,7 +5738,12 @@ async function savePrItems() {
 
       if (!item.id) item.id = _genPrId();
       const data = { id: item.id, date: item.date||'', dateISO: item.dateISO||'', title: item.title||'', body: item.body||'', images, creatorUid: item.creatorUid || '' };
-      await db.collection('config').doc(_prDocId(i)).set(data);
+      const docId = _prDocId(i);
+      if (!_prItemDataEqual(existingDataById[docId], data)) {
+        statusEl.textContent = `กำลังบันทึก ${i+1}/${_prItems.length}...`;
+        await db.collection('config').doc(docId).set(data);
+        savedCount++;
+      }
       _prItems[i] = { ...data, _idx: i };
     }
     await db.collection('config').doc('prMeta').set({ count: _prItems.length });
@@ -5685,7 +5751,7 @@ async function savePrItems() {
     renderPrPage();
     renderPrItems();
     statusEl.textContent = '✓ บันทึกแล้ว';
-    showToast('บันทึกประชาสัมพันธ์แล้ว ✓');
+    showToast(savedCount ? `บันทึกประชาสัมพันธ์แล้ว ✓ (${savedCount} รายการ)` : 'ไม่มีประกาศที่เปลี่ยนแปลง');
   } catch(e) {
     statusEl.textContent = 'เกิดข้อผิดพลาด: ' + e.message;
     showToast('บันทึกไม่สำเร็จ: ' + e.message);
