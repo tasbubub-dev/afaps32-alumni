@@ -1317,6 +1317,13 @@ function callApi_(url, payload, token) {
   return data;
 }
 
+// เลือกฟังก์ชันนี้แล้วกด Run ใน editor 1 ครั้ง เพื่ออนุญาตสิทธิ์เชื่อมต่อภายนอก และทดสอบ SERVICE_ACCOUNT
+function testSetup() {
+  CacheService.getScriptCache().remove('sa_token');
+  var token = serviceToken_();
+  Logger.log('OK: ได้ token จาก Service Account แล้ว (' + token.length + ' ตัวอักษร)');
+}
+
 function serviceToken_() {
   var cache = CacheService.getScriptCache();
   var cached = cache.get('sa_token');
