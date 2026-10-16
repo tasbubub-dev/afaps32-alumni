@@ -1109,7 +1109,7 @@ body {
 
     <div class="admin-section-label" style="margin-top:1.25rem">สร้างบัญชีผู้ใช้ให้สมาชิก</div>
     <div class="admin-tip-card" style="padding-bottom:0.75rem;font-size:0.78rem">
-      สร้างบัญชี Firebase Auth สำหรับทุกเบอร์โทรใน Firestore ที่ยังไม่มีบัญชี<br>
+      สร้างบัญชี Firebase Auth จากเบอร์ที่ 1 ของสมาชิกใน Firestore ที่ยังไม่มีบัญชี<br>
       • <strong>มีอีเมล์</strong> → ใช้อีเมล์นั้น &nbsp;• <strong>ไม่มีอีเมล์</strong> → สร้างเป็น <code>เบอร์@tat32.app</code><br>
       <small style="color:#888">* รหัสผ่านเริ่มต้น: <strong>123456</strong> &nbsp;· สมาชิกเปลี่ยนได้ภายหลัง</small>
     </div>
@@ -2173,10 +2173,10 @@ function normalizePhone(raw) {
   return p;
 }
 
-// Pre-load phone→email map (Firestore ก่อน → Sheet CSV เป็น fallback)
+// Pre-load phone→email map — ใช้เฉพาะเบอร์ที่ 1 (phone1) ใน Firestore เท่านั้นเป็นเบอร์ล็อกอิน
+// (เบอร์ที่ 2 และเบอร์ใน Google Sheet ใช้ล็อกอินไม่ได้ กันบัญชีซ้ำ/ผูกผิดคนเมื่อข้อมูลสองแหล่งไม่ตรงกัน)
 let phoneEmailMap = {};
 let _validPhones = new Set();
-let _sheetPhoneMember = {}; // เบอร์ใน Google Sheet → { seq, fullname } ใช้ผูกบัญชีเมื่อเบอร์ใน Firestore ถูกแก้ไปแล้ว
 let _phoneEmailMapReady = null;
 
 function _addPhoneEmail(phone, email) {
@@ -2187,37 +2187,13 @@ function _addPhoneEmail(phone, email) {
 }
 
 async function preloadPhoneEmailMap() {
-  // 1. โหลดจาก Firestore (แหล่งข้อมูลหลัก — อีเมลจาก Firestore ได้รับ priority)
   try {
     const snap = await db.collection('members').get();
     snap.docs.forEach(doc => {
       const d = doc.data();
-      const email = (d.email || '').trim().toLowerCase();
-      [d.phone1, d.phone2].forEach(p => _addPhoneEmail(p, email));
+      _addPhoneEmail(d.phone1, (d.email || '').trim().toLowerCase());
     });
   } catch(e) { console.warn('Firestore phone-email preload:', e.message); }
-
-  // 2. โหลดจาก Sheet CSV เพิ่มเติม (เบอร์ที่ยังไม่มีใน Firestore / อีเมลสำรอง)
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 8000);
-    const res  = await fetch(SHEETS_CSV_URL, { signal: ctrl.signal });
-    clearTimeout(t);
-    const text = await res.text();
-    const rows = parseCSV(text);
-    if (rows.length >= 2) {
-      rows.slice(1).forEach(r => {
-        const email = (r[COL.email] || '').trim().toLowerCase();
-        [r[COL.phone1], r[COL.phone2]].forEach(p => {
-          _addPhoneEmail(p, email);
-          const ph = normalizePhone(p);
-          if (/^\d{9,10}$/.test(ph) && !_sheetPhoneMember[ph]) {
-            _sheetPhoneMember[ph] = { seq: (r[COL.seq] || '').trim(), fullname: r[COL.fullname] || '' };
-          }
-        });
-      });
-    }
-  } catch(e) { console.warn('Sheet phone-email preload:', e.message); }
 }
 _phoneEmailMapReady = preloadPhoneEmailMap();
 
@@ -2225,7 +2201,8 @@ _phoneEmailMapReady = preloadPhoneEmailMap();
 // ต้องตั้ง Firestore rules: match /members/{id} { allow read: if true; }
 async function checkPhoneInFirestore(phone) {
   const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents:runQuery?key=${FIREBASE_CONFIG.apiKey}`;
-  for (const field of ['phone1', 'phone2']) {
+  // เบอร์ใน Firestore อาจเก็บแบบมีขีด (081-2345678) — ลองทั้งแบบตัวเลขล้วนและแบบมีขีด
+  for (const value of [phone, phone.slice(0, 3) + '-' + phone.slice(3)]) {
     try {
       const res = await fetch(url, {
         method: 'POST',
@@ -2233,7 +2210,7 @@ async function checkPhoneInFirestore(phone) {
         body: JSON.stringify({
           structuredQuery: {
             from: [{ collectionId: 'members' }],
-            where: { fieldFilter: { field: { fieldPath: field }, op: 'EQUAL', value: { stringValue: phone } } },
+            where: { fieldFilter: { field: { fieldPath: 'phone1' }, op: 'EQUAL', value: { stringValue: value } } },
             limit: 1
           }
         })
@@ -4698,14 +4675,13 @@ async function provisionAllMemberAccounts() {
     snap.docs.forEach(doc => {
       const m = doc.data();
       const memberEmail = (m.email || '').trim().toLowerCase();
-      for (const rawPhone of [m.phone1, m.phone2]) {
-        const phone = normalizePhone(rawPhone);
-        if (!phone || !/^\d{9,10}$/.test(phone)) continue;
-        const email = memberEmail || phoneToEmail(phone);
-        if (seenEmails.has(email)) continue;
-        seenEmails.add(email);
-        tasks.push({ phone, email });
-      }
+      // ใช้เฉพาะเบอร์ที่ 1 — เบอร์เดียวที่ใช้ล็อกอินได้
+      const phone = normalizePhone(m.phone1);
+      if (!phone || !/^\d{9,10}$/.test(phone)) return;
+      const email = memberEmail || phoneToEmail(phone);
+      if (seenEmails.has(email)) return;
+      seenEmails.add(email);
+      tasks.push({ phone, email });
     });
 
     const total = tasks.length;
@@ -5132,25 +5108,11 @@ async function checkAutoLink() {
   const authEmail = currentUser.email?.toLowerCase().trim() || '';
   if (!authEmail) return;
 
-  // ลองจับคู่: 1) อีเมล์จริง 2) เบอร์โทรศัพท์ (phone@tat32.app) 3) เบอร์ใน Google Sheet
+  // ลองจับคู่: 1) อีเมล์จริง 2) เบอร์ที่ 1 ใน Firestore (phone@tat32.app)
   let match = allMembers.find(m => m.email && m.email.toLowerCase().trim() === authEmail);
   if (!match && authEmail.endsWith('@tat32.app')) {
     const phone = authEmail.split('@')[0];
-    match = allMembers.find(m => normalizePhone(m.phone1) === phone || normalizePhone(m.phone2) === phone);
-    // เบอร์ที่ล็อกอินอาจยังค้างอยู่ใน Sheet แต่ใน Firestore แก้เป็นเบอร์ใหม่ไปแล้ว — จับคู่ผ่านแถวใน Sheet
-    // โดยต้องชื่อตรงกันด้วย เพราะลำดับใน Sheet บางแถวไม่ตรงกับ ID ใน Firestore
-    if (!match) {
-      await _phoneEmailMapReady;
-      const sh = _sheetPhoneMember[phone];
-      const nm = s => (s || '').replace(/\(.*?\)|\s/g, '');
-      if (sh && nm(sh.fullname)) {
-        match = allMembers.find(m => m.id === sh.seq && nm(m.fullname) === nm(sh.fullname));
-        if (!match) {
-          const byName = allMembers.filter(m => nm(m.fullname) === nm(sh.fullname));
-          if (byName.length === 1) match = byName[0];
-        }
-      }
-    }
+    match = allMembers.find(m => normalizePhone(m.phone1) === phone);
   }
   if (!match) return;
 
