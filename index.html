@@ -1107,6 +1107,17 @@ body {
       </div>
     </div>
 
+    <div class="admin-section-label" style="margin-top:1.25rem">รีเซ็ตรหัสผ่านสมาชิก</div>
+    <div class="admin-tip-card" style="padding-bottom:0.5rem;font-size:0.78rem">
+      ค้นหาสมาชิกแล้วกด "รีเซ็ต" รหัสผ่านจะกลับเป็นค่าเริ่มต้น <strong>123456</strong><br>
+      <small style="color:#888">* บัญชีที่รีเซ็ตคือบัญชีที่ล็อกอินด้วยเบอร์ที่ 1 (หรืออีเมล) ของสมาชิก · ต้องติดตั้ง Apps Script เวอร์ชันล่าสุดในหัวข้อ "อัพเดท Sheet อัตโนมัติ" ก่อน</small>
+    </div>
+    <div class="admin-member-search-wrap">
+      <input id="pwreset-search" type="text" placeholder="ค้นหาชื่อ/ชื่อเล่น/เบอร์โทร..." oninput="filterPwResetSearch()" autocomplete="off">
+      <div id="pwreset-results" class="admin-member-results"></div>
+    </div>
+    <div id="pwreset-status" style="font-size:0.8rem;color:#666;margin-top:0.4rem;text-align:center"></div>
+
     <div class="admin-section-label" style="margin-top:1.25rem">สร้างบัญชีผู้ใช้ให้สมาชิก</div>
     <div class="admin-tip-card" style="padding-bottom:0.75rem;font-size:0.78rem">
       สร้างบัญชี Firebase Auth จากเบอร์ที่ 1 ของสมาชิกใน Firestore ที่ยังไม่มีบัญชี<br>
@@ -1203,7 +1214,9 @@ body {
         3. กด Deploy → <strong>New deployment</strong> (หรือ Manage → Edit → New version)<br>
         4. Execute as: <strong>Me</strong> / Who has access: <strong>Anyone</strong><br>
         5. คัดลอก URL ใหม่ที่ได้มาวางในช่องด้านบน แล้วกด 💾 บันทึก<br>
-        6. กด 🔗 ทดสอบ — ถ้าเห็น {"ok":true} แสดงว่าพร้อมใช้งาน<br><br>
+        6. กด 🔗 ทดสอบ — ถ้าเห็น {"ok":true} แสดงว่าพร้อมใช้งาน<br>
+        7. <strong>(สำหรับปุ่มรีเซ็ตรหัสผ่าน)</strong> Firebase Console → ⚙️ Project settings → Service accounts → <strong>Generate new private key</strong> → เปิดไฟล์ JSON ที่ได้แล้วคัดลอกทั้งหมด → กลับมาที่ Apps Script → ⚙️ Project Settings → Script Properties → Add script property ชื่อ <code>SERVICE_ACCOUNT</code> วาง JSON เป็นค่า → Save<br>
+        <small style="color:#c00">* ไฟล์ key นี้ให้สิทธิ์เต็มกับระบบ ห้ามส่งต่อ และลบไฟล์ออกจากเครื่องหลังวางเสร็จ</small><br><br>
         <strong>โค้ด Apps Script:</strong>
         <textarea readonly style="width:100%;box-sizing:border-box;margin-top:0.4rem;font-size:0.7rem;font-family:monospace;height:200px;border:1px solid #ddd;border-radius:6px;padding:6px;resize:none;background:#fff">// วางโค้ดนี้ใน Code.gs แล้ว Deploy ใหม่ (Execute as: Me, Access: Anyone)
 var SHEET_NAME = 'UPDATE 09 ก.ย.68'; // ← เปลี่ยนให้ตรงชื่อ sheet
@@ -1256,6 +1269,73 @@ function doGet(e) {
 function json(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ═══ รีเซ็ตรหัสผ่านสมาชิก (เรียกจากหน้าจัดการระบบ — Admin เท่านั้น) ═══
+// ต้องใส่ Service Account key ของ Firebase ไว้ใน Project Settings → Script Properties ชื่อ SERVICE_ACCOUNT
+var FIREBASE_PROJECT = 'afaps-32';
+var FIREBASE_API_KEY = 'AIzaSyD8hKvQDEi9BrLwzEV9TryQPPlbiAtVjeQ';
+var DEFAULT_PASSWORD = '123456';
+
+function doPost(e) {
+  try {
+    var body = JSON.parse((e.postData && e.postData.contents) || '{}');
+    if (body.action === 'resetPassword') return json(resetPassword_(body));
+    return json({ok:false, error:'unknown action'});
+  } catch(err) {
+    return json({ok:false, error:err.message});
+  }
+}
+
+function resetPassword_(body) {
+  if (!body.idToken || !body.email) return {ok:false, error:'ข้อมูลไม่ครบ'};
+  // 1) ยืนยันตัวผู้เรียกจาก Firebase ID token
+  var caller = callApi_('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + FIREBASE_API_KEY, {idToken: body.idToken});
+  var callerUser = caller.users && caller.users[0];
+  if (!callerUser) return {ok:false, error:'ยืนยันตัวผู้ใช้ไม่ได้ กรุณาเข้าสู่ระบบใหม่'};
+  var token = serviceToken_();
+  // 2) ผู้เรียกต้องมี role = admin
+  var prof = callApi_('https://firestore.googleapis.com/v1/projects/' + FIREBASE_PROJECT + '/databases/(default)/documents/userProfiles/' + callerUser.localId, null, token);
+  var role = prof.fields && prof.fields.role && prof.fields.role.stringValue;
+  if (role !== 'admin') return {ok:false, error:'ต้องเป็น Admin เท่านั้น'};
+  // 3) หาบัญชีเป้าหมายจากอีเมลที่ใช้ล็อกอิน
+  var found = callApi_('https://identitytoolkit.googleapis.com/v1/projects/' + FIREBASE_PROJECT + '/accounts:lookup', {email: [String(body.email).toLowerCase()]}, token);
+  var target = found.users && found.users[0];
+  if (!target) return {ok:false, notFound:true, error:'ยังไม่มีบัญชีนี้ (ยังไม่เคยเข้าสู่ระบบ) ใช้รหัสผ่านเริ่มต้น ' + DEFAULT_PASSWORD + ' ได้เลย'};
+  // 4) ตั้งรหัสผ่านกลับเป็นค่าเริ่มต้น
+  callApi_('https://identitytoolkit.googleapis.com/v1/projects/' + FIREBASE_PROJECT + '/accounts:update', {localId: target.localId, password: DEFAULT_PASSWORD}, token);
+  return {ok:true, email: target.email};
+}
+
+function callApi_(url, payload, token) {
+  var opt = {method: payload ? 'post' : 'get', muteHttpExceptions: true, headers: {}};
+  if (payload) { opt.contentType = 'application/json'; opt.payload = JSON.stringify(payload); }
+  if (token) opt.headers.Authorization = 'Bearer ' + token;
+  var res = UrlFetchApp.fetch(url, opt);
+  var data = JSON.parse(res.getContentText() || '{}');
+  if (res.getResponseCode() >= 400) throw new Error((data.error && data.error.message) || ('HTTP ' + res.getResponseCode()));
+  return data;
+}
+
+function serviceToken_() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('sa_token');
+  if (cached) return cached;
+  var sa = JSON.parse(PropertiesService.getScriptProperties().getProperty('SERVICE_ACCOUNT') || '{}');
+  if (!sa.client_email || !sa.private_key) throw new Error('ยังไม่ได้ตั้งค่า SERVICE_ACCOUNT ใน Script Properties');
+  var now = Math.floor(Date.now() / 1000);
+  var b64 = function(o) { return Utilities.base64EncodeWebSafe(typeof o === 'string' ? o : JSON.stringify(o)).replace(/=+$/, ''); };
+  var unsigned = b64({alg:'RS256', typ:'JWT'}) + '.' + b64({
+    iss: sa.client_email, aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600,
+    scope: 'https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/identitytoolkit https://www.googleapis.com/auth/datastore'
+  });
+  var sig = Utilities.base64EncodeWebSafe(Utilities.computeRsaSha256Signature(unsigned, sa.private_key)).replace(/=+$/, '');
+  var res = UrlFetchApp.fetch('https://oauth2.googleapis.com/token', {method: 'post', muteHttpExceptions: true,
+    payload: {grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: unsigned + '.' + sig}});
+  var tok = JSON.parse(res.getContentText());
+  if (!tok.access_token) throw new Error('ขอ token ไม่สำเร็จ: ' + res.getContentText());
+  cache.put('sa_token', tok.access_token, 3000);
+  return tok.access_token;
 }</textarea>
       </div>
     </div>
@@ -4511,6 +4591,71 @@ async function syncToSheet(seq, data) {
   } catch(e) {
     console.error('[syncToSheet] error:', e.message);
     showToast('⚠️ Sheet sync error: ' + e.message);
+  }
+}
+
+// ═══ รีเซ็ตรหัสผ่านสมาชิก (Admin) — ผ่าน Apps Script ที่ถือสิทธิ์ Service Account ═══
+const DEFAULT_MEMBER_PASSWORD = '123456';
+
+// อีเมลของบัญชีที่สมาชิกใช้ล็อกอิน — ตรงกับ doLogin: อีเมลสมาชิก (ถ้ามี) หรือ เบอร์ที่1@tat32.app
+function _memberLoginEmail(m) {
+  const email = (m.email || '').trim().toLowerCase();
+  if (email) return email;
+  const ph = normalizePhone(m.phone1);
+  return /^\d{9,10}$/.test(ph) ? phoneToEmail(ph) : '';
+}
+
+function filterPwResetSearch() {
+  const q = (document.getElementById('pwreset-search').value || '').trim().toLowerCase();
+  const resultsEl = document.getElementById('pwreset-results');
+  if (!q) { resultsEl.classList.remove('open'); resultsEl.innerHTML = ''; return; }
+  const qPhone = q.replace(/\D/g, '');
+  const matches = allMembers.filter(m =>
+    (m.fullname||'').toLowerCase().includes(q) ||
+    (m.nickname||'').toLowerCase().includes(q) ||
+    (qPhone.length >= 4 && [m.phone1, m.phone2].some(p => normalizePhone(p).includes(qPhone)))
+  ).slice(0, 10);
+  if (!matches.length) { resultsEl.innerHTML = '<div class="admin-member-result-item" style="color:#aaa">ไม่พบข้อมูล</div>'; resultsEl.classList.add('open'); return; }
+  resultsEl.innerHTML = matches.map(m => {
+    const login = _memberLoginEmail(m);
+    return `<div class="admin-member-result-item" style="display:flex;align-items:center;gap:0.5rem;cursor:default">
+      <div style="flex:1;min-width:0">
+        ${escHtml(m.rank)} ${escHtml(m.fullname)} ${m.nickname ? '"'+escHtml(m.nickname)+'"' : ''}
+        <span style="font-size:0.78rem;color:#888;margin-left:4px">${m.branch||''}</span>
+        <div style="font-size:0.72rem;color:#999">${login ? 'บัญชี: ' + escHtml(login) : 'ไม่มีเบอร์ที่ 1/อีเมล — ล็อกอินไม่ได้'}</div>
+      </div>
+      ${login ? `<button onclick="resetMemberPassword('${m.id}')" style="flex:0 0 auto;background:#8b1a1a;color:#fff;border:none;border-radius:6px;padding:0.3rem 0.6rem;font-family:var(--font);font-size:0.78rem;cursor:pointer">รีเซ็ต</button>` : ''}
+    </div>`;
+  }).join('');
+  resultsEl.classList.add('open');
+}
+
+async function resetMemberPassword(memberId) {
+  if (!isAdmin()) { showToast('ต้องเป็น Admin เท่านั้น'); return; }
+  const m = allMembers.find(x => x.id === memberId);
+  if (!m) return;
+  const email = _memberLoginEmail(m);
+  const statusEl = document.getElementById('pwreset-status');
+  if (!_appsScriptUrl) { statusEl.textContent = 'ยังไม่ได้ตั้งค่า Apps Script URL (หัวข้อ "อัพเดท Sheet อัตโนมัติ")'; return; }
+  if (!confirm(`รีเซ็ตรหัสผ่านของ\n${m.rank} ${m.fullname}\nบัญชี ${email}\nให้เป็น ${DEFAULT_MEMBER_PASSWORD} ?`)) return;
+  statusEl.style.color = '#666';
+  statusEl.textContent = 'กำลังรีเซ็ต...';
+  try {
+    const idToken = await currentUser.getIdToken();
+    // ส่งเป็น text/plain เพื่อไม่ให้เกิด CORS preflight กับ Apps Script
+    const res = await fetch(_appsScriptUrl, { method: 'POST', body: JSON.stringify({ action: 'resetPassword', idToken, email }) });
+    const data = await res.json();
+    if (data.ok) {
+      statusEl.style.color = '#1a6f1a';
+      statusEl.textContent = `✓ รีเซ็ตรหัสผ่านของ ${m.fullname} (${data.email}) เป็น ${DEFAULT_MEMBER_PASSWORD} แล้ว`;
+      showToast('รีเซ็ตรหัสผ่านแล้ว ✓');
+    } else {
+      statusEl.style.color = data.notFound ? '#666' : '#c00';
+      statusEl.textContent = (data.notFound ? '' : 'ไม่สำเร็จ: ') + (data.error || data.msg || 'ไม่ทราบสาเหตุ (Apps Script อาจยังไม่ใช่เวอร์ชันล่าสุด)');
+    }
+  } catch(e) {
+    statusEl.style.color = '#c00';
+    statusEl.textContent = 'เชื่อมต่อ Apps Script ไม่ได้: ' + e.message + ' — ตรวจว่า Deploy เวอร์ชันล่าสุดแล้ว';
   }
 }
 
