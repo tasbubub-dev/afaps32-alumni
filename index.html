@@ -4030,6 +4030,17 @@ async function _loadEventRSVPs(eventId) {
   const snap = await db.collection('eventRSVPs').where('eventId', '==', eventId).get();
   const rows = [];
   snap.forEach(d => rows.push(d.data()));
+  // รายการที่ส่งตอนบัญชียังไม่ได้ผูกสมาชิกจะไม่มีชื่อ — หาสมาชิกจากบัญชีตอนนี้ (memberId ที่ผูกภายหลัง / เบอร์ที่ 1 / อีเมล) มาแสดงแทน
+  await Promise.all(rows.filter(r => r.uid && !(r.rankName || '').trim()).map(async r => {
+    try {
+      const p = (await db.collection('userProfiles').doc(r.uid).get()).data() || {};
+      const acct = (p.email || '').toLowerCase().trim();
+      let m = p.memberId ? allMembers.find(x => x.id === p.memberId) : null;
+      if (!m && acct.endsWith('@tat32.app')) m = allMembers.find(x => normalizePhone(x.phone1) === acct.split('@')[0]);
+      if (!m && acct) m = allMembers.find(x => (x.email || '').toLowerCase().trim() === acct);
+      if (m) { r.rankName = [m.rank, m.fullname].filter(Boolean).join(' '); r._memberId = m.id; }
+    } catch(_) {}
+  }));
   return rows;
 }
 
@@ -4037,6 +4048,11 @@ async function _loadEventRSVPs(eventId) {
 async function _rsvpNicknameMap(rows) {
   const uids = [...new Set(rows.map(r => r.uid).filter(Boolean))];
   const map = {};
+  // แถวที่ _loadEventRSVPs หาสมาชิกให้แล้ว (บัญชียังไม่ผูก) ใช้ชื่อเล่นจากสมาชิกนั้น
+  rows.forEach(r => {
+    const m = r._memberId ? allMembers.find(x => x.id === r._memberId) : null;
+    if (m && m.nickname) map[r.uid] = m.nickname;
+  });
   for (let i = 0; i < uids.length; i += 10) {
     const chunk = uids.slice(i, i + 10);
     try {
