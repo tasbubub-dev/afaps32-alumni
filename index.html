@@ -4187,6 +4187,7 @@ async function exportEventRSVPsPDF(eventId) {
   const _pdfAType = ev.attendType !== undefined ? ev.attendType : 'ร่วม/ไม่ร่วม';
   const [_pdfAY, _pdfAN] = _pdfAType ? _pdfAType.split('/') : ['ร่วม','ไม่ร่วม'];
   colHeaders.push('หมายเหตุ');
+  const wrapCols = new Set(['ยศ-ชื่อ-นามสกุล','ห้องพัก','การเดินทาง','กิจกรรม','เสื้อ','หมายเหตุ']);
   const buildRow = (r, i) => {
     const cells = [`${i+1}`, r.rankName||'', nickMap[r.uid]||'', _pdfAType?(r.attending?_pdfAY:_pdfAN):''];
     if (ev.paymentRequired) cells.push(r.amount||'');
@@ -4196,16 +4197,15 @@ async function exportEventRSVPsPDF(eventId) {
     if (ev.activityField) cells.push(_fmtRsvpActivitiesLatest(r));
     if (ev.shirtField) cells.push(_fmtRsvpShirt(r));
     cells.push(r.note||'');
-    const nameIdx = 1;
-    const nickIdx = 2;
-    const noteIdx = cells.length - 1;
+    // คอลัมน์ข้อความยาว (ชื่อ ห้องพัก การเดินทาง กิจกรรม เสื้อ หมายเหตุ) ให้ตัดบรรทัดได้ เพื่อให้ทุกคอลัมน์อยู่ในหน้ากระดาษ
     return `<tr>${cells.map((c,idx)=>{
-      const align = (idx===nameIdx||idx===nickIdx||idx===noteIdx) ? 'left' : 'center';
-      const wrap = idx===noteIdx ? '' : 'white-space:nowrap;';
-      return `<td style="text-align:${align};${wrap}">${c}</td>`;
+      const isText = wrapCols.has(colHeaders[idx]);
+      const align = isText || idx===2 ? 'left' : 'center';
+      const wrap = isText ? 'word-break:break-word;' : 'white-space:nowrap;';
+      return `<td style="text-align:${align};${wrap}">${escHtml(c)}</td>`;
     }).join('')}</tr>`;
   };
-  const thStyle = 'background:#1a5c2a;color:#fff;padding:3px 5px;font-size:9px;text-align:center;white-space:nowrap';
+  const thStyle = 'background:#1a5c2a;color:#fff;padding:3px 5px;font-size:9px;text-align:center';
   const tdStyle = 'padding:3px 5px;font-size:9px;border-bottom:1px solid #eee';
   const theadHtml = `<tr>${colHeaders.map(h=>`<th style="${thStyle}">${h}</th>`).join('')}</tr>`;
   const tbodyHtml = [...goRows,...noRows].map(buildRow).join('');
@@ -4230,13 +4230,15 @@ async function exportEventRSVPsPDF(eventId) {
     </div>` : '';
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>${ev.title||'กิจกรรม'}</title>
-    <style>body{font-family:'Sarabun',sans-serif;padding:20px}table{width:100%;border-collapse:collapse}
-    th{${thStyle}}td{${tdStyle}}h2{font-size:14px;margin-bottom:8px}</style></head>
+    <style>@page{size:A4 landscape;margin:8mm}
+    body{font-family:'Sarabun',sans-serif;padding:0;margin:0}table{width:100%;border-collapse:collapse}
+    th{${thStyle}}td{${tdStyle};vertical-align:top}thead{display:table-header-group}tr{page-break-inside:avoid}
+    h2{font-size:14px;margin-bottom:8px}</style></head>
     <body><h2>${ev.title||'กิจกรรม'} — รายชื่อผู้แสดงความจำนง (${rows.length} คน, ร่วม ${goRows.length} คน)</h2>
     ${summaryHtml}
     <table><thead>${theadHtml}</thead><tbody>${tbodyHtml}</tbody></table></body></html>`;
   const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm';
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:297mm;height:210mm';
   document.body.appendChild(iframe);
   iframe.srcdoc = html;
   iframe.onload = () => { iframe.contentWindow.print(); setTimeout(()=>iframe.remove(), 2000); };
