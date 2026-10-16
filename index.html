@@ -2176,6 +2176,7 @@ function normalizePhone(raw) {
 // Pre-load phone→email map (Firestore ก่อน → Sheet CSV เป็น fallback)
 let phoneEmailMap = {};
 let _validPhones = new Set();
+let _sheetPhoneMember = {}; // เบอร์ใน Google Sheet → { seq, fullname } ใช้ผูกบัญชีเมื่อเบอร์ใน Firestore ถูกแก้ไปแล้ว
 let _phoneEmailMapReady = null;
 
 function _addPhoneEmail(phone, email) {
@@ -2207,7 +2208,13 @@ async function preloadPhoneEmailMap() {
     if (rows.length >= 2) {
       rows.slice(1).forEach(r => {
         const email = (r[COL.email] || '').trim().toLowerCase();
-        [r[COL.phone1], r[COL.phone2]].forEach(p => _addPhoneEmail(p, email));
+        [r[COL.phone1], r[COL.phone2]].forEach(p => {
+          _addPhoneEmail(p, email);
+          const ph = normalizePhone(p);
+          if (/^\d{9,10}$/.test(ph) && !_sheetPhoneMember[ph]) {
+            _sheetPhoneMember[ph] = { seq: (r[COL.seq] || '').trim(), fullname: r[COL.fullname] || '' };
+          }
+        });
       });
     }
   } catch(e) { console.warn('Sheet phone-email preload:', e.message); }
@@ -5125,14 +5132,25 @@ async function checkAutoLink() {
   const authEmail = currentUser.email?.toLowerCase().trim() || '';
   if (!authEmail) return;
 
-  // ลองจับคู่: 1) อีเมล์จริง 2) เบอร์โทรศัพท์ (phone@tat32.app)
+  // ลองจับคู่: 1) อีเมล์จริง 2) เบอร์โทรศัพท์ (phone@tat32.app) 3) เบอร์ใน Google Sheet
   let match = allMembers.find(m => m.email && m.email.toLowerCase().trim() === authEmail);
   if (!match && authEmail.endsWith('@tat32.app')) {
     const phone = authEmail.split('@')[0];
-    match = allMembers.find(m =>
-      (m.phone1 && m.phone1.replace(/[-\s]/g,'') === phone) ||
-      (m.phone2 && m.phone2.replace(/[-\s]/g,'') === phone)
-    );
+    match = allMembers.find(m => normalizePhone(m.phone1) === phone || normalizePhone(m.phone2) === phone);
+    // เบอร์ที่ล็อกอินอาจยังค้างอยู่ใน Sheet แต่ใน Firestore แก้เป็นเบอร์ใหม่ไปแล้ว — จับคู่ผ่านแถวใน Sheet
+    // โดยต้องชื่อตรงกันด้วย เพราะลำดับใน Sheet บางแถวไม่ตรงกับ ID ใน Firestore
+    if (!match) {
+      await _phoneEmailMapReady;
+      const sh = _sheetPhoneMember[phone];
+      const nm = s => (s || '').replace(/\(.*?\)|\s/g, '');
+      if (sh && nm(sh.fullname)) {
+        match = allMembers.find(m => m.id === sh.seq && nm(m.fullname) === nm(sh.fullname));
+        if (!match) {
+          const byName = allMembers.filter(m => nm(m.fullname) === nm(sh.fullname));
+          if (byName.length === 1) match = byName[0];
+        }
+      }
+    }
   }
   if (!match) return;
 
@@ -5153,6 +5171,14 @@ async function checkAutoLink() {
         }
       } catch(_) {}
     }
+
+    // เติมชื่อในรายการลงทะเบียนกิจกรรมที่เคยส่งไว้ตอนยังไม่ได้ผูกบัญชี (ชื่อว่าง)
+    try {
+      const rankName = [match.rank, match.fullname].filter(Boolean).join(' ');
+      const rsvps = await db.collection('eventRSVPs').where('uid', '==', currentUser.uid).get();
+      await Promise.all(rsvps.docs.filter(d => !(d.data().rankName || '').trim())
+        .map(d => d.ref.update({ rankName })));
+    } catch(_) {}
 
     updateAccountBtn();
     showToast(`ผูกบัญชีกับ ${match.fullname} อัตโนมัติ ✓`);
