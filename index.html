@@ -2255,9 +2255,20 @@ document.getElementById('login-password').addEventListener('keypress', e => { if
 
 function phoneToEmail(phone) { return phone + '@tat32.app'; }
 function normalizePhone(raw) {
-  let p = (raw || '').replace(/[\s\-()+.]/g, '').trim();
+  // ตัดทุกอย่างที่ไม่ใช่ตัวเลข (รวมอักขระซ่อนอย่าง zero-width space ที่ติดมาจากการ copy)
+  let p = String(raw || '').replace(/\D/g, '');
   if (p.startsWith('66') && p.length === 11) p = '0' + p.slice(2);
   return p;
+}
+// อีเมลของสมาชิกที่ใช้ล็อกอินได้จริง — ข้อมูลบางคนกรอกไว้ผิดรูปแบบ (เช่น "-", มีเว้นวรรค, ใส่ 2 อีเมลคั่นด้วย /)
+// ถ้าใช้ไม่ได้คืนค่าว่าง เพื่อให้ไปใช้บัญชี เบอร์@tat32.app แทน (ไม่งั้น Firebase ตอบ auth/invalid-email)
+function cleanEmail(raw) {
+  const parts = String(raw || '').toLowerCase().split(/[\/,;]|\s+or\s+/);
+  for (const part of parts) {
+    const e = part.replace(/\s+/g, '');
+    if (/^[a-z0-9._%+\-]+@[a-z0-9\-]+(\.[a-z0-9\-]+)*\.[a-z]{2,}$/.test(e)) return e;
+  }
+  return '';
 }
 
 // Pre-load phone→email map — ใช้เฉพาะเบอร์ที่ 1 (phone1) ใน Firestore เท่านั้นเป็นเบอร์ล็อกอิน
@@ -2278,7 +2289,7 @@ async function preloadPhoneEmailMap() {
     const snap = await db.collection('members').get();
     snap.docs.forEach(doc => {
       const d = doc.data();
-      _addPhoneEmail(d.phone1, (d.email || '').trim().toLowerCase());
+      _addPhoneEmail(d.phone1, cleanEmail(d.email));
     });
   } catch(e) { console.warn('Firestore phone-email preload:', e.message); }
 }
@@ -2306,7 +2317,7 @@ async function checkPhoneInFirestore(phone) {
       const rows = await res.json();
       if (Array.isArray(rows) && rows[0]?.document) {
         const f = rows[0].document.fields || {};
-        return { found: true, email: f.email?.stringValue || '' };
+        return { found: true, email: cleanEmail(f.email?.stringValue) };
       }
     } catch(e) { /* network error */ }
   }
@@ -4124,7 +4135,7 @@ async function _loadEventRSVPs(eventId) {
       const acct = (p.email || '').toLowerCase().trim();
       let m = p.memberId ? allMembers.find(x => x.id === p.memberId) : null;
       if (!m && acct.endsWith('@tat32.app')) m = allMembers.find(x => normalizePhone(x.phone1) === acct.split('@')[0]);
-      if (!m && acct) m = allMembers.find(x => (x.email || '').toLowerCase().trim() === acct);
+      if (!m && acct) m = allMembers.find(x => cleanEmail(x.email) === acct);
       if (m) { r.rankName = [m.rank, m.fullname].filter(Boolean).join(' '); r._memberId = m.id; }
     } catch(_) {}
   }));
@@ -4606,7 +4617,7 @@ const DEFAULT_MEMBER_PASSWORD = '123456';
 
 // อีเมลของบัญชีที่สมาชิกใช้ล็อกอิน — ตรงกับ doLogin: อีเมลสมาชิก (ถ้ามี) หรือ เบอร์ที่1@tat32.app
 function _memberLoginEmail(m) {
-  const email = (m.email || '').trim().toLowerCase();
+  const email = cleanEmail(m.email);
   if (email) return email;
   const ph = normalizePhone(m.phone1);
   return /^\d{9,10}$/.test(ph) ? phoneToEmail(ph) : '';
@@ -4842,7 +4853,7 @@ async function provisionAllMemberAccounts() {
 
     snap.docs.forEach(doc => {
       const m = doc.data();
-      const memberEmail = (m.email || '').trim().toLowerCase();
+      const memberEmail = cleanEmail(m.email);
       // ใช้เฉพาะเบอร์ที่ 1 — เบอร์เดียวที่ใช้ล็อกอินได้
       const phone = normalizePhone(m.phone1);
       if (!phone || !/^\d{9,10}$/.test(phone)) return;
@@ -4935,9 +4946,9 @@ function selectAdminMember(memberId) {
 
 async function saveMemberRoleFromSearch() {
   if (!adminSelectedMember) return;
-  const email = adminSelectedMember.email;
+  const email = _memberLoginEmail(adminSelectedMember);
   const role  = document.getElementById('admin-member-role-select').value;
-  if (!email) { showToast('สมาชิกนี้ยังไม่มีอีเมล์ในระบบ'); return; }
+  if (!email) { showToast('สมาชิกนี้ยังไม่มีอีเมล์หรือเบอร์ที่ 1 ในระบบ'); return; }
   try {
     // บันทึก pendingRoles สำหรับ email นี้ (จะถูก apply เมื่อ user คนนั้น login)
     await db.collection('pendingRoles').doc(email.toLowerCase()).set({ role, assignedAt: firebase.firestore.FieldValue.serverTimestamp(), assignedBy: currentUser?.email || '' });
@@ -5277,7 +5288,7 @@ async function checkAutoLink() {
   if (!authEmail) return;
 
   // ลองจับคู่: 1) อีเมล์จริง 2) เบอร์ที่ 1 ใน Firestore (phone@tat32.app)
-  let match = allMembers.find(m => m.email && m.email.toLowerCase().trim() === authEmail);
+  let match = allMembers.find(m => cleanEmail(m.email) === authEmail);
   if (!match && authEmail.endsWith('@tat32.app')) {
     const phone = authEmail.split('@')[0];
     match = allMembers.find(m => normalizePhone(m.phone1) === phone);
@@ -5289,7 +5300,7 @@ async function checkAutoLink() {
     currentUserProfile.memberId = match.id;
 
     // ตรวจ pendingRole จากทั้ง authEmail และ email จริงของสมาชิก
-    const memberEmail = match.email?.toLowerCase().trim() || '';
+    const memberEmail = cleanEmail(match.email);
     for (const key of [...new Set([authEmail, memberEmail])].filter(Boolean)) {
       try {
         const pr = await db.collection('pendingRoles').doc(key).get();
