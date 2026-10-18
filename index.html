@@ -4496,6 +4496,20 @@ async function saveMemberEdit() {
   addIfNotEmpty(data, 'business', document.getElementById('me-business').value.trim());
   addIfNotEmpty(data, 'shirt',    document.getElementById('me-shirt').value);
 
+  // ตรวจเบอร์ที่ 1 และอีเมลก่อนบันทึก — สองค่านี้ใช้ล็อกอิน ถ้าผิดรูปแบบสมาชิกจะเข้าระบบไม่ได้
+  const stripHidden = v => v.replace(/[\u200b-\u200f\u2060\ufeff]/g, '').trim(); // อักขระซ่อนที่ติดมาจากการ copy
+  ['phone1', 'phone2', 'email'].forEach(k => { if (data[k] !== undefined) data[k] = stripHidden(data[k]); });
+  if (data.phone1 !== undefined && !/^\d{10}$/.test(normalizePhone(data.phone1))) {
+    showToast('มือถือ 1 ต้องเป็นตัวเลข 10 หลัก (ใช้เป็นเบอร์ล็อกอิน)'); return;
+  }
+  if (data.email !== undefined) {
+    if (!data.email.includes('@')) {
+      data.email = ''; // ค่าที่กรอกแทนช่องว่าง เช่น "-" — ล้างทิ้ง แล้วไปใช้บัญชีจากเบอร์ที่ 1 แทน
+    } else if (cleanEmail(data.email) !== data.email.toLowerCase()) {
+      showToast('อีเมล์ไม่ถูกต้อง — ใส่ได้ 1 อีเมล์ ไม่มีเว้นวรรค'); return;
+    }
+  }
+
   if (pendingPhotoDataUrl) {
     // พยายาม upload ขึ้น Firebase Storage ก่อน (ดีกว่าเก็บ base64)
     try {
