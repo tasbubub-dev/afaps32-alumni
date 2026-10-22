@@ -3141,11 +3141,11 @@ function renderEventCard(ev, submission) {
   </div>`;
 }
 
-// เลือกแบบเสื้อได้เฉพาะ 2 แบบแรก เมื่อไม่เข้าร่วม หรือไม่มีผู้ติดตาม (ผู้ใหญ่ + เด็ก = 0)
-// แบบที่ 3 เป็นต้นไปเป็นเสื้อสำหรับผู้เข้าร่วมที่มาพร้อมผู้ติดตาม
-function _rsvpShirtLimited(ev, attending, companion, childCompanion) {
+// เลือกแบบเสื้อได้เฉพาะ 2 แบบแรก เมื่อไม่เข้าร่วม หรือไม่มีผู้ติดตามที่เป็นผู้ใหญ่ (เด็กไม่นับ)
+// แบบที่ 3 เป็นต้นไปเป็นเสื้อสำหรับผู้เข้าร่วมที่มาพร้อมผู้ติดตามผู้ใหญ่ตั้งแต่ 1 คน
+function _rsvpShirtLimited(ev, attending, companion) {
   if (attending === false) return true;
-  return !!ev.companionField && (parseInt(companion) || 0) + (parseInt(childCompanion) || 0) === 0;
+  return !!ev.companionField && (parseInt(companion) || 0) < 1;
 }
 
 function renderRSVPForm(ev, rsvp) {
@@ -3154,7 +3154,7 @@ function renderRSVPForm(ev, rsvp) {
   const notGoing = attending === false;
   const companion = ev.companionField ? (st.companion !== undefined ? st.companion : (rsvp?.companion || 0)) : 0;
   const childCompanion = ev.companionField ? (st.childCompanion !== undefined ? st.childCompanion : (rsvp?.childCompanion || 0)) : 0;
-  const shirtLimited = _rsvpShirtLimited(ev, attending, companion, childCompanion);
+  const shirtLimited = _rsvpShirtLimited(ev, attending, companion);
 
   // helper: grey-out wrapper when not attending
   const dis = notGoing
@@ -3191,7 +3191,7 @@ function renderRSVPForm(ev, rsvp) {
           <div>
             <div class="rsvp-row-label" style="margin-bottom:0.25rem">เด็กอายุต่ำกว่า 12 ปี (คน)</div>
             <input class="rsvp-field" type="number" min="0" value="${childCompanion}"
-              oninput="_rsvpSetField('${ev.id}','childCompanion',this.value)" onchange="renderEvCard('${ev.id}')" style="width:80px">
+              oninput="_rsvpSetField('${ev.id}','childCompanion',this.value)" style="width:80px">
           </div>
         </div>
       </div>`;
@@ -3490,7 +3490,7 @@ async function submitRSVP(eventId) {
     if (ev?.shirtField) {
       if (ev.shirtDesigns && ev.shirtDesigns.length) {
         // ตัดแบบที่เลือกไม่ได้ออก (เช่น เคยเลือกแบบที่ 3 ไว้ แล้วเปลี่ยนเป็นไม่เข้าร่วม/ไม่มีผู้ติดตาม)
-        const limited = _rsvpShirtLimited(ev, st.attending, st.companion, st.childCompanion);
+        const limited = _rsvpShirtLimited(ev, st.attending, st.companion);
         const allowed = new Set((limited ? ev.shirtDesigns.slice(0, 2) : ev.shirtDesigns).map(d => d.label));
         rsvpData.shirts = _dedupByLabel(st.shirts || []).filter(sh => allowed.has(sh.label));
       } else {
