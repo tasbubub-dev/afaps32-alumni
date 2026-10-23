@@ -974,15 +974,7 @@ body {
   <!-- Photos Page -->
   <div class="page-photos" id="page-photos">
     <div class="page-section-title">ภาพถ่าย</div>
-    <div class="photos-grid" id="photos-grid">
-      <div class="photo-thumb"><div class="photo-placeholder">📷</div></div>
-      <div class="photo-thumb"><div class="photo-placeholder">📷</div></div>
-      <div class="photo-thumb"><div class="photo-placeholder">📷</div></div>
-      <div class="photo-thumb"><div class="photo-placeholder">📷</div></div>
-      <div class="photo-thumb"><div class="photo-placeholder">📷</div></div>
-      <div class="photo-thumb"><div class="photo-placeholder">📷</div></div>
-    </div>
-    <p style="text-align:center;color:#aaa;font-size:0.8rem;margin-top:1rem;">อัลบั้มภาพจะแสดงที่นี่</p>
+    <div style="text-align:center;color:#aaa;padding:2rem;font-size:0.9rem">กำลังโหลดอัลบั้มภาพ...</div>
   </div>
 
   <!-- Chat Page -->
@@ -6039,13 +6031,23 @@ async function saveAlbumLinks() {
   try {
     const myBranch = _normBranch(await _fetchUserBranch());
     const myUid = currentUser?.uid || '';
-    const linksToSave = _albumLinks.map(link => ({
+    // ไม่บันทึกลิงก์ที่ไม่มี URL และลิงก์ที่ URL ซ้ำกัน, ต้องมีชื่ออัลบั้มทุกลิงก์
+    const seen = new Set();
+    const cleaned = _albumLinks
+      .map(link => ({ ...link, label: (link.label || '').trim(), url: (link.url || '').trim() }))
+      .filter(link => link.url && !seen.has(link.url) && seen.add(link.url));
+    if (cleaned.some(link => !link.label)) {
+      document.getElementById('album-save-status').textContent = 'กรุณาใส่ชื่ออัลบั้มให้ครบทุกลิงค์';
+      return;
+    }
+    const linksToSave = cleaned.map(link => ({
       ...link,
       creatorBranch: link.creatorBranch ? _normBranch(link.creatorBranch) : myBranch,
       creatorUid: link.creatorUid || myUid
     }));
     await db.collection('config').doc('photosPage').set({ links: linksToSave });
     _albumLinks = linksToSave;
+    renderAlbumLinks();
     renderPhotosPage();
     document.getElementById('album-save-status').textContent = '✓ บันทึกแล้ว';
     showToast('บันทึกลิงค์ภาพถ่ายแล้ว ✓');
@@ -6176,13 +6178,22 @@ function renderPrPage() {
   });
 }
 
+// ชื่อเว็บของลิงก์ (เช่น photos.google.com) ไว้แสดงกำกับใต้ชื่ออัลบั้ม
+function _albumHost(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
+
 function renderPhotosPage() {
   const el = document.getElementById('page-photos');
   if (!el) return;
   const userBranch = _normBranch(_currentUserBranch());
-  const visible = _albumLinks.filter(link =>
-    link.allBranches || !userBranch || !link.creatorBranch || _normBranch(link.creatorBranch) === userBranch
-  );
+  const seen = new Set();
+  const visible = _albumLinks.filter(link => {
+    const url = (link.url || '').trim();
+    if (!url || seen.has(url)) return false; // ข้ามลิงก์ว่างและลิงก์ซ้ำ
+    seen.add(url);
+    return link.allBranches || !userBranch || !link.creatorBranch || _normBranch(link.creatorBranch) === userBranch;
+  });
   if (!visible.length) {
     el.innerHTML = '<div class="page-section-title">ภาพถ่าย</div><div style="text-align:center;color:#aaa;padding:2rem;font-size:0.9rem">ยังไม่มีอัลบั้ม</div>';
     return;
@@ -6192,7 +6203,10 @@ function renderPhotosPage() {
       <a href="${encodeURI(link.url||'#')}" target="_blank" rel="noopener"
         style="display:flex;align-items:center;gap:0.75rem;background:#fff;border-radius:12px;padding:0.85rem 1rem;margin-bottom:0.6rem;box-shadow:0 1px 4px rgba(0,0,0,0.07);text-decoration:none;color:#1a1a2e">
         <span style="font-size:1.5rem">📷</span>
-        <span style="font-weight:600;font-size:0.9rem;flex:1">${escHtml(link.label||link.url)}</span>
+        <span style="flex:1;min-width:0">
+          <span style="display:block;font-weight:600;font-size:0.9rem">${escHtml((link.label || '').trim() || 'อัลบั้มภาพถ่าย')}</span>
+          <span style="display:block;font-size:0.72rem;color:#999;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(_albumHost(link.url))}${link.creatorBranch ? ' · ' + escHtml(_normBranch(link.creatorBranch)) + '.' : ''}</span>
+        </span>
         <span style="color:#aaa;font-size:0.8rem">→</span>
       </a>`).join('');
 }
