@@ -509,6 +509,10 @@ body {
 .admin-member-result-item { padding:0.6rem 0.9rem; cursor:pointer; font-size:0.9rem; border-bottom:1px solid #f0f0f0; }
 .admin-member-result-item:last-child { border-bottom:none; }
 .admin-member-result-item:hover { background:#f5f7fa; }
+.pr-date-wrap { position:relative; }
+.pr-date-ph { position:absolute; left:0.55rem; top:50%; transform:translateY(-50%); font-size:0.78rem; color:#aaa; pointer-events:none; }
+.pr-date-wrap input.empty:not(:focus)::-webkit-datetime-edit { color:transparent; }
+.pr-date-wrap input:focus + .pr-date-ph, .pr-date-wrap input:not(.empty) + .pr-date-ph { display:none; }
 .admin-member-role-panel { background:#fff; border-radius:10px; padding:0.9rem 1rem; box-shadow:0 1px 4px rgba(0,0,0,0.06); margin-top:0.5rem; }
 /* link member overlay */
 .link-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:400; display:none; align-items:flex-end; justify-content:center; }
@@ -5471,9 +5475,12 @@ function renderPrItems() {
       </label>` : '';
     return `
     <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:0.6rem;margin-bottom:0.4rem">
-      <input type="date" value="${escHtml(item.dateISO||'')}"
-        onchange="_prItems[${ri}].dateISO=this.value;_prItems[${ri}].date=this.value?_fmtThaiFullDateWithWeekday(new Date(this.value+'T00:00:00')):'';renderPrItems()"
-        style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:0.35rem 0.5rem;font-family:var(--font);font-size:0.78rem;outline:none">
+      <div class="pr-date-wrap">
+        <input type="date" value="${escHtml(item.dateISO||'')}" class="${item.dateISO ? '' : 'empty'}" title="วันที่ประกาศ"
+          onchange="_prItems[${ri}].dateISO=this.value;_prItems[${ri}].date=this.value?_fmtThaiFullDateWithWeekday(new Date(this.value+'T00:00:00')):'';renderPrItems()"
+          style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:0.35rem 0.5rem;font-family:var(--font);font-size:0.78rem;outline:none">
+        <span class="pr-date-ph">📅 วันที่ประกาศ</span>
+      </div>
       ${item.date ? `<div style="font-size:0.72rem;color:#888;margin:0.2rem 0 0.3rem">${escHtml(item.date)}</div>` : '<div style="margin-bottom:0.3rem"></div>'}
       <input value="${escHtml(item.title||'')}" placeholder="หัวข้อประกาศ"
         oninput="_prItems[${ri}].title=this.value"
