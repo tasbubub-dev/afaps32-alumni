@@ -2288,9 +2288,19 @@ function _addPhoneEmail(phone, email) {
   if (email && !phoneEmailMap[ph]) phoneEmailMap[ph] = email.trim().toLowerCase();
 }
 
+// โหลดข้อมูลสมาชิกจาก Firestore ครั้งเดียว แล้วใช้ร่วมกันทั้งตรวจเบอร์ล็อกอินและทำเนียบรุ่น (ข้อมูลหลาย MB — ไม่โหลดซ้ำ)
+let _membersSnapPromise = null;
+function _getMembersSnapOnce() {
+  if (!_membersSnapPromise) {
+    _membersSnapPromise = db.collection('members').get({ source: 'server' })
+      .catch(e => { _membersSnapPromise = null; throw e; }); // ล้มเหลวให้ลองใหม่ได้ครั้งหน้า
+  }
+  return _membersSnapPromise;
+}
+
 async function preloadPhoneEmailMap() {
   try {
-    const snap = await db.collection('members').get();
+    const snap = await _getMembersSnapOnce();
     snap.docs.forEach(doc => {
       const d = doc.data();
       _addPhoneEmail(d.phone1, cleanEmail(d.email));
@@ -2484,7 +2494,7 @@ async function loadMembers() {
     // ── ลองโหลดจาก Firestore ก่อน (บังคับดึงจาก server สดๆ ไม่ใช้ cache เก่า) ──
     let fromFirestore = false;
     try {
-      const snap = await db.collection('members').get({ source: 'server' });
+      const snap = await _getMembersSnapOnce();
       if (snap.size > 0) {
         allMembers = snap.docs
           .map(doc => {
@@ -2852,8 +2862,8 @@ function renderGrid() {
     <div class="member-card" onclick="openDetail('${escHtml(m.id)}')">
       <div class="member-photo-wrap">
         ${m.photoUrl
-          ? `<img src="${m.photoUrl}" alt="${escHtml(m.fullname)}" onerror="this.src=BRANCH_AVATAR['${_normBranch(m.branch)}']||BRANCH_AVATAR['all']">`
-          : `<img src="${BRANCH_AVATAR[_normBranch(m.branch)] || BRANCH_AVATAR['all']}" alt="${escHtml(m.fullname)}">`}
+          ? `<img src="${m.photoUrl}" alt="${escHtml(m.fullname)}" loading="lazy" decoding="async" onerror="this.src=BRANCH_AVATAR['${_normBranch(m.branch)}']||BRANCH_AVATAR['all']">`
+          : `<img src="${BRANCH_AVATAR[_normBranch(m.branch)] || BRANCH_AVATAR['all']}" alt="${escHtml(m.fullname)}" loading="lazy" decoding="async">`}
       </div>
       <div class="member-info">
         <div class="rank-row">
