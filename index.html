@@ -727,6 +727,8 @@ body {
   font-family:'Sarabun',sans-serif; font-size:0.82rem; cursor:pointer;
 }
 .po-branch-btn.active { background:#f5a623; color:#fff; border-color:#f5a623; font-weight:700; }
+.xlsx-branch-btn { flex:1; padding:0.35rem 0; border-radius:16px; border:1.5px solid #cfd6e0; background:#fff; color:#555; font-family:var(--font); font-size:0.8rem; cursor:pointer; }
+.xlsx-branch-btn.active { background:#1a5c3a; color:#fff; border-color:#1a5c3a; font-weight:700; }
 #po-bar .po-actions { display:flex; gap:6px; }
 .po-btn-print {
   padding:5px 16px; border-radius:20px; border:none;
@@ -1350,6 +1352,14 @@ function serviceToken_() {
       <div class="admin-tip-card" style="padding-bottom:0.5rem;font-size:0.78rem">
         ส่งออกข้อมูลสมาชิกทั้งหมดที่โหลดอยู่ในขณะนั้น<br>
         <small style="color:#888">* Excel: เปิดได้ทันที · PDF: กด Ctrl+P แล้วเลือก Save as PDF</small>
+      </div>
+      <div style="font-size:0.75rem;color:#555;margin:0.25rem 0 0.2rem">เลือกเหล่าสำหรับ Excel</div>
+      <div id="xlsx-branch-filter" style="display:flex;gap:0.3rem;margin-bottom:0.4rem">
+        <button class="xlsx-branch-btn active" data-branch="all" onclick="setXlsxBranch('all')">ทั้งหมด</button>
+        <button class="xlsx-branch-btn" data-branch="ตร" onclick="setXlsxBranch('ตร')">ตร.</button>
+        <button class="xlsx-branch-btn" data-branch="ทบ" onclick="setXlsxBranch('ทบ')">ทบ.</button>
+        <button class="xlsx-branch-btn" data-branch="ทอ" onclick="setXlsxBranch('ทอ')">ทอ.</button>
+        <button class="xlsx-branch-btn" data-branch="ทร" onclick="setXlsxBranch('ทร')">ทร.</button>
       </div>
       <div style="display:flex;gap:0.5rem;margin-top:0.25rem">
         <button onclick="exportMembersXLSX()" style="flex:1;background:#1a5c3a;color:#fff;border:none;border-radius:8px;padding:0.55rem;font-family:var(--font);font-size:0.85rem;cursor:pointer">📊 ส่งออก Excel</button>
@@ -6406,6 +6416,14 @@ function _getMemberRows(branchFilter) {
   });
 }
 
+var _xlsxBranch = 'all';
+function setXlsxBranch(branch) {
+  _xlsxBranch = branch;
+  document.querySelectorAll('#xlsx-branch-filter .xlsx-branch-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.branch === branch);
+  });
+}
+
 async function exportMembersXLSX() {
   var statusEl = document.getElementById('export-status');
   statusEl.textContent = 'กำลังโหลด SheetJS...';
@@ -6418,7 +6436,7 @@ async function exportMembersXLSX() {
       s.onerror = reject;
       document.head.appendChild(s);
     });
-    var rows = _getMemberRows(currentBranch);
+    var rows = _getMemberRows(_xlsxBranch);
     if (!rows.length) { statusEl.textContent = 'ไม่มีข้อมูลสมาชิก'; return; }
     var headers = ['ลำดับ','ยศ','ชื่อ-นามสกุล','ชื่อเล่น','เหล่า','ตำแหน่ง','หน่วย','เบอร์โทร 1','เบอร์โทร 2','อีเมล์','วันเดือนปีเกิด','LINE ID','อาชีพ/ธุรกิจ'];
     var data = [headers].concat(rows.map(function(r) {
@@ -6427,9 +6445,10 @@ async function exportMembersXLSX() {
     var ws = XLSX.utils.aoa_to_sheet(data);
     ws['!cols'] = [{wch:6},{wch:22},{wch:26},{wch:10},{wch:6},{wch:28},{wch:20},{wch:14},{wch:14},{wch:28},{wch:14},{wch:16},{wch:28}];
     var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'นตท.32');
-    XLSX.writeFile(wb, 'ทำเนียบรุ่น_นตท32.xlsx');
-    statusEl.textContent = 'ดาวน์โหลด Excel สำเร็จ (' + rows.length + ' คน)';
+    var bLabel = _xlsxBranch === 'all' ? '' : _xlsxBranch + '.';
+    XLSX.utils.book_append_sheet(wb, ws, 'นตท.32' + (bLabel ? ' ' + bLabel : ''));
+    XLSX.writeFile(wb, 'ทำเนียบรุ่น_นตท32' + (bLabel ? '_' + _xlsxBranch : '') + '.xlsx');
+    statusEl.textContent = 'ดาวน์โหลด Excel สำเร็จ' + (bLabel ? ' เหล่า ' + bLabel : ' ทุกเหล่า') + ' (' + rows.length + ' คน)';
   } catch(e) {
     statusEl.textContent = 'เกิดข้อผิดพลาด: ' + e.message;
   }
