@@ -2273,6 +2273,14 @@ function normalizePhone(raw) {
   if (p.startsWith('66') && p.length === 11) p = '0' + p.slice(2);
   return p;
 }
+// หน่วยงานตำรวจภูธรภาค 1–9 เขียนแบบเดียวกันเสมอ: "ภ. 2", "ภ 2", "ภ.๒" → "ภ.2" (หน่วยงานอื่นคงตามที่กรอก แค่ตัดช่องว่างหัวท้าย)
+function normUnit(raw) {
+  const u = String(raw || '').trim();
+  const m = u.match(/^ภ\s*\.?\s*([1-9๑-๙])\s*$/);
+  if (!m) return u;
+  const thai = '๐๑๒๓๔๕๖๗๘๙'.indexOf(m[1]);
+  return 'ภ.' + (thai >= 0 ? thai : m[1]);
+}
 // อีเมลของสมาชิกที่ใช้ล็อกอินได้จริง — ข้อมูลบางคนกรอกไว้ผิดรูปแบบ (เช่น "-", มีเว้นวรรค, ใส่ 2 อีเมลคั่นด้วย /)
 // ถ้าใช้ไม่ได้คืนค่าว่าง เพื่อให้ไปใช้บัญชี เบอร์@tat32.app แทน (ไม่งั้น Firebase ตอบ auth/invalid-email)
 function cleanEmail(raw) {
@@ -4207,7 +4215,7 @@ async function _rsvpMemberMap(rows) {
 // การจัดเรียงรายงานกิจกรรม: 'unit' = แยกตามหน่วยงาน (ค่าเริ่มต้น), 'status' = ผู้ร่วมก่อนแล้วตามด้วยผู้ไม่ร่วม
 let _rsvpExportGroup = 'unit';
 const _NO_UNIT = 'ไม่ระบุหน่วยงาน';
-function _rsvpUnit(r, memberMap) { return ((memberMap[r.uid] || {}).unit || '').trim() || _NO_UNIT; }
+function _rsvpUnit(r, memberMap) { return normUnit((memberMap[r.uid] || {}).unit) || _NO_UNIT; }
 function _sortRsvpRows(rows, memberMap) {
   const go = rows.filter(r => r.attending), no = rows.filter(r => !r.attending);
   if (_rsvpExportGroup !== 'unit') return [...go, ...no];
@@ -4299,7 +4307,7 @@ async function exportEventRSVPsExcel(eventId) {
   headers.push('หมายเหตุ');
   const data = _sortRsvpRows(rows, memberMap).map(r => {
     const m = memberMap[r.uid] || {};
-    const row = [r.rankName || '', m.nickname || '', m.unit || '', _exAType ? (r.attending ? _exAY : _exAN) : ''];
+    const row = [r.rankName || '', m.nickname || '', normUnit(m.unit), _exAType ? (r.attending ? _exAY : _exAN) : ''];
     if (ev.paymentRequired) { row.push(r.amount || ''); row.push(r.slipUrl ? r.slipUrl : ''); }
     if (ev.companionField) { row.push(r.companion ?? ''); row.push(r.childCompanion ?? ''); }
     if (ev.roomField) row.push(r.roomType || '');
@@ -4341,7 +4349,7 @@ async function exportEventRSVPsPDF(eventId) {
   const wrapCols = new Set(['ยศ-ชื่อ-นามสกุล','หน่วยงาน','ห้องพัก','การเดินทาง','กิจกรรม','เสื้อ','หมายเหตุ']);
   const buildRow = (r, i) => {
     const m = memberMap[r.uid] || {};
-    const cells = [`${i+1}`, r.rankName||'', m.nickname||'', m.unit||'', _pdfAType?(r.attending?_pdfAY:_pdfAN):''];
+    const cells = [`${i+1}`, r.rankName||'', m.nickname||'', normUnit(m.unit), _pdfAType?(r.attending?_pdfAY:_pdfAN):''];
     if (ev.paymentRequired) cells.push(r.amount||'');
     if (ev.companionField) { cells.push(String(r.companion??'')); cells.push(String(r.childCompanion??'')); }
     if (ev.roomField) cells.push(r.roomType||'');
@@ -4600,7 +4608,7 @@ async function saveMemberEdit() {
     addIfNotEmpty(data, 'nickname', document.getElementById('me-nickname').value.trim());
     addIfNotEmpty(data, 'birthday', document.getElementById('me-birthday').value.trim());
     addIfNotEmpty(data, 'position', document.getElementById('me-position').value.trim());
-    addIfNotEmpty(data, 'unit',     document.getElementById('me-unit').value.trim());
+    addIfNotEmpty(data, 'unit',     normUnit(document.getElementById('me-unit').value));
     if (isAdmin()) { data.branch = document.getElementById('me-branch').value; }
   }
 
