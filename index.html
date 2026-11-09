@@ -1385,6 +1385,13 @@ function serviceToken_() {
       <button onclick="openEventEditor(null)" style="width:100%;background:#1a5c2a;color:#fff;border:none;border-radius:8px;padding:0.5rem;font-family:var(--font);font-size:0.85rem;cursor:pointer;margin-bottom:0.4rem">
         ➕ สร้างกิจกรรมใหม่
       </button>
+      <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:#555;margin:0.2rem 0 0.3rem">
+        จัดเรียงรายงาน Excel/PDF:
+        <select onchange="_rsvpExportGroup=this.value" style="flex:1;padding:0.3rem 0.4rem;border:1.5px solid #ddd;border-radius:6px;font-family:var(--font);font-size:0.78rem">
+          <option value="unit" selected>แยกตามหน่วยงาน</option>
+          <option value="status">ร่วมก่อน แล้วตามด้วยไม่ร่วม</option>
+        </select>
+      </div>
       <div id="admin-events-list" style="margin-top:0.25rem"></div>
 
       <div class="admin-section-label" style="margin-top:1.25rem">ลิงค์อัลบั้มภาพถ่าย</div>
@@ -4173,13 +4180,14 @@ async function _loadEventRSVPs(eventId) {
 }
 
 // หา uid → ชื่อเล่น (ผ่าน userProfiles.memberId → allMembers) สำหรับใช้ในรายงาน
-async function _rsvpNicknameMap(rows) {
+// uid → สมาชิกที่ผูกกับบัญชีนั้น (ใช้ชื่อเล่น/หน่วยงานในรายงานกิจกรรม)
+async function _rsvpMemberMap(rows) {
   const uids = [...new Set(rows.map(r => r.uid).filter(Boolean))];
   const map = {};
-  // แถวที่ _loadEventRSVPs หาสมาชิกให้แล้ว (บัญชียังไม่ผูก) ใช้ชื่อเล่นจากสมาชิกนั้น
+  // แถวที่ _loadEventRSVPs หาสมาชิกให้แล้ว (บัญชียังไม่ผูก)
   rows.forEach(r => {
     const m = r._memberId ? allMembers.find(x => x.id === r._memberId) : null;
-    if (m && m.nickname) map[r.uid] = m.nickname;
+    if (m) map[r.uid] = m;
   });
   for (let i = 0; i < uids.length; i += 10) {
     const chunk = uids.slice(i, i + 10);
@@ -4189,11 +4197,26 @@ async function _rsvpNicknameMap(rows) {
       snap.forEach(doc => {
         const memberId = doc.data().memberId;
         const m = memberId ? allMembers.find(x => x.id === memberId) : null;
-        if (m && m.nickname) map[doc.id] = m.nickname;
+        if (m) map[doc.id] = m;
       });
     } catch(e) { /* ข้ามถ้าดึงไม่ได้ */ }
   }
   return map;
+}
+
+// การจัดเรียงรายงานกิจกรรม: 'unit' = แยกตามหน่วยงาน (ค่าเริ่มต้น), 'status' = ผู้ร่วมก่อนแล้วตามด้วยผู้ไม่ร่วม
+let _rsvpExportGroup = 'unit';
+const _NO_UNIT = 'ไม่ระบุหน่วยงาน';
+function _rsvpUnit(r, memberMap) { return ((memberMap[r.uid] || {}).unit || '').trim() || _NO_UNIT; }
+function _sortRsvpRows(rows, memberMap) {
+  const go = rows.filter(r => r.attending), no = rows.filter(r => !r.attending);
+  if (_rsvpExportGroup !== 'unit') return [...go, ...no];
+  return [...rows].sort((a, b) => {
+    const ua = _rsvpUnit(a, memberMap), ub = _rsvpUnit(b, memberMap);
+    if (ua !== ub) return ua === _NO_UNIT ? 1 : ub === _NO_UNIT ? -1 : ua.localeCompare(ub, 'th');
+    if (!!a.attending !== !!b.attending) return a.attending ? -1 : 1;
+    return (a.rankName || '').localeCompare(b.rankName || '', 'th');
+  });
 }
 
 // สรุปจำนวนแยกตามตัวเลือกต่างๆ ของกิจกรรม — คืนเป็น [[หัวข้อ, ค่า, กลุ่ม], ...] ใช้ร่วมกันทั้ง Excel และ PDF
@@ -4263,8 +4286,8 @@ async function exportEventRSVPsExcel(eventId) {
   const ev = (await db.collection('events').doc(eventId).get()).data() || {};
   const rows = await _loadEventRSVPs(eventId);
   await _loadSheetJS();
-  const nickMap = await _rsvpNicknameMap(rows);
-  const headers = ['ยศ-ชื่อ-นามสกุล', 'ชื่อเล่น', 'สถานะ'];
+  const memberMap = await _rsvpMemberMap(rows);
+  const headers = ['ยศ-ชื่อ-นามสกุล', 'ชื่อเล่น', 'หน่วยงาน', 'สถานะ'];
   if (ev.paymentRequired) headers.push('จำนวนเงิน (บาท)', 'สลิป');
   if (ev.companionField) { headers.push('ผู้ติดตาม(ผู้ใหญ่)'); headers.push('ผู้ติดตาม(เด็กต่ำกว่า 12 ปี)'); }
   if (ev.roomField) headers.push('ห้องพัก');
@@ -4274,8 +4297,9 @@ async function exportEventRSVPsExcel(eventId) {
   const _exAType = ev.attendType !== undefined ? ev.attendType : 'ร่วม/ไม่ร่วม';
   const [_exAY, _exAN] = _exAType ? _exAType.split('/') : ['ร่วม','ไม่ร่วม'];
   headers.push('หมายเหตุ');
-  const data = rows.map(r => {
-    const row = [r.rankName || '', nickMap[r.uid] || '', _exAType ? (r.attending ? _exAY : _exAN) : ''];
+  const data = _sortRsvpRows(rows, memberMap).map(r => {
+    const m = memberMap[r.uid] || {};
+    const row = [r.rankName || '', m.nickname || '', m.unit || '', _exAType ? (r.attending ? _exAY : _exAN) : ''];
     if (ev.paymentRequired) { row.push(r.amount || ''); row.push(r.slipUrl ? r.slipUrl : ''); }
     if (ev.companionField) { row.push(r.companion ?? ''); row.push(r.childCompanion ?? ''); }
     if (ev.roomField) row.push(r.roomType || '');
@@ -4302,10 +4326,9 @@ async function exportEventRSVPsExcel(eventId) {
 async function exportEventRSVPsPDF(eventId) {
   const ev = (await db.collection('events').doc(eventId).get()).data() || {};
   const rows = await _loadEventRSVPs(eventId);
-  const nickMap = await _rsvpNicknameMap(rows);
+  const memberMap = await _rsvpMemberMap(rows);
   const goRows = rows.filter(r => r.attending);
-  const noRows = rows.filter(r => !r.attending);
-  const colHeaders = ['#','ยศ-ชื่อ-นามสกุล','ชื่อเล่น','สถานะ'];
+  const colHeaders = ['#','ยศ-ชื่อ-นามสกุล','ชื่อเล่น','หน่วยงาน','สถานะ'];
   if (ev.paymentRequired) colHeaders.push('ค่าใช้จ่าย');
   if (ev.companionField) { colHeaders.push('ผู้ติดตาม(ผู้ใหญ่)'); colHeaders.push('ผู้ติดตาม(เด็ก<12ปี)'); }
   if (ev.roomField) colHeaders.push('ห้องพัก');
@@ -4315,9 +4338,10 @@ async function exportEventRSVPsPDF(eventId) {
   const _pdfAType = ev.attendType !== undefined ? ev.attendType : 'ร่วม/ไม่ร่วม';
   const [_pdfAY, _pdfAN] = _pdfAType ? _pdfAType.split('/') : ['ร่วม','ไม่ร่วม'];
   colHeaders.push('หมายเหตุ');
-  const wrapCols = new Set(['ยศ-ชื่อ-นามสกุล','ห้องพัก','การเดินทาง','กิจกรรม','เสื้อ','หมายเหตุ']);
+  const wrapCols = new Set(['ยศ-ชื่อ-นามสกุล','หน่วยงาน','ห้องพัก','การเดินทาง','กิจกรรม','เสื้อ','หมายเหตุ']);
   const buildRow = (r, i) => {
-    const cells = [`${i+1}`, r.rankName||'', nickMap[r.uid]||'', _pdfAType?(r.attending?_pdfAY:_pdfAN):''];
+    const m = memberMap[r.uid] || {};
+    const cells = [`${i+1}`, r.rankName||'', m.nickname||'', m.unit||'', _pdfAType?(r.attending?_pdfAY:_pdfAN):''];
     if (ev.paymentRequired) cells.push(r.amount||'');
     if (ev.companionField) { cells.push(String(r.companion??'')); cells.push(String(r.childCompanion??'')); }
     if (ev.roomField) cells.push(r.roomType||'');
@@ -4336,7 +4360,23 @@ async function exportEventRSVPsPDF(eventId) {
   const thStyle = 'background:#1a5c2a;color:#fff;padding:3px 5px;font-size:9px;text-align:center';
   const tdStyle = 'padding:3px 5px;font-size:9px;border-bottom:1px solid #eee';
   const theadHtml = `<tr>${colHeaders.map(h=>`<th style="${thStyle}">${h}</th>`).join('')}</tr>`;
-  const tbodyHtml = [...goRows,...noRows].map(buildRow).join('');
+  const sorted = _sortRsvpRows(rows, memberMap);
+  let tbodyHtml = '';
+  if (_rsvpExportGroup === 'unit') {
+    // แยกตามหน่วยงาน: มีหัวกลุ่มบอกชื่อหน่วยงานและจำนวนคน ลำดับ # นับต่อเนื่องทั้งรายงาน
+    let lastUnit = null;
+    sorted.forEach((r, i) => {
+      const u = _rsvpUnit(r, memberMap);
+      if (u !== lastUnit) {
+        const inUnit = sorted.filter(x => _rsvpUnit(x, memberMap) === u);
+        tbodyHtml += `<tr><td colspan="${colHeaders.length}" style="background:#e8f2ea;font-weight:700;font-size:10px;padding:4px 6px">${escHtml(u)} — ${inUnit.length} คน${_pdfAType ? ` (${_pdfAY} ${inUnit.filter(x => x.attending).length} คน)` : ''}</td></tr>`;
+        lastUnit = u;
+      }
+      tbodyHtml += buildRow(r, i);
+    });
+  } else {
+    tbodyHtml = sorted.map(buildRow).join('');
+  }
   const summaryRows = _buildRsvpSummaryRows(ev, rows);
   const _summaryColTable = (rowsArr) => rowsArr.length ? `
     <table style="width:100%;border-collapse:collapse;font-size:10px">
